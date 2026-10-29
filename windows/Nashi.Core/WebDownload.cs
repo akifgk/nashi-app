@@ -4,8 +4,10 @@ public sealed partial class WebDownload(Toolchain tools)
 {
     public static Uri Validate(string input)
     {
-        if(!Uri.TryCreate(input,UriKind.Absolute,out var url)||url.Scheme is not ("http" or "https")||!string.IsNullOrEmpty(url.UserInfo)||url.IsLoopback||url.Host.EndsWith(".local",StringComparison.OrdinalIgnoreCase)||url.Host.Equals("localhost",StringComparison.OrdinalIgnoreCase)||url.Host.EndsWith(".localhost",StringComparison.OrdinalIgnoreCase)||(System.Net.IPAddress.TryParse(url.Host.Trim('[',']'),out var address)&&IsPrivate(address)))throw new ArgumentException("Paste a public http(s) media or page link.");return url;
+        if(!Uri.TryCreate(input,UriKind.Absolute,out var url)||url.Scheme is not ("http" or "https")||!string.IsNullOrEmpty(url.UserInfo)||url.IsLoopback||IsLocalName(url.Host)||(System.Net.IPAddress.TryParse(url.Host.Trim('[',']'),out var address)&&IsPrivate(address)))throw new ArgumentException("Paste a public http(s) media or page link.");return url;
     }
+    // A trailing dot names the same host (`localhost.`), so compare without it. The returned Uri is unchanged.
+    private static bool IsLocalName(string host){var name=host.TrimEnd('.');return name.EndsWith(".local",StringComparison.OrdinalIgnoreCase)||name.Equals("localhost",StringComparison.OrdinalIgnoreCase)||name.EndsWith(".localhost",StringComparison.OrdinalIgnoreCase);}
     // Literal private, link-local and carrier-grade NAT addresses never name a public media server.
     private static bool IsPrivate(System.Net.IPAddress address)
     {

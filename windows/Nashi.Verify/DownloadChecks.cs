@@ -14,7 +14,17 @@ internal static class DownloadChecks
     }
     public static async Task Run(Action<bool,string> check,string root)
     {
-        using(var handler=WebDownload.PublicOnlyHandler())using(var client=new HttpClient(handler)){try{await client.GetAsync("http://localhost:9/");check(false,"A name that resolves to this computer was reached");}catch(HttpRequestException){check(true,"A name that resolves to this computer is refused at connect time");}}
+        // A real listener on loopback: the refusal must happen before the request reaches it, not because the port is closed.
+        var listener=new System.Net.Sockets.TcpListener(IPAddress.Loopback,0);listener.Start();
+        try
+        {
+            var port=((IPEndPoint)listener.LocalEndpoint).Port;
+            using var handler=WebDownload.PublicOnlyHandler();using var client=new HttpClient(handler);
+            try{await client.GetAsync($"http://localhost:{port}/");check(false,"A name that resolves to this computer was reached");}
+            catch(HttpRequestException error){check(!listener.Pending()&&error.ToString().Contains("private network"),"A name that resolves to this computer is refused before the connection is made");}
+        }
+        finally{listener.Stop();}
+        foreach(var name in new[]{"http://localhost./a","http://app.localhost./a","http://printer.local./a"})try{WebDownload.Validate(name);check(false,"Trailing-dot local name accepted: "+name);}catch(ArgumentException){check(true,"Trailing-dot local names are refused");}
         var uri=new Uri("https://download.example/fixture");var output=Path.Combine(root,"Download.bin");var bytes=new byte[]{1,2,3};
         HttpResponseMessage Response(HttpRequestMessage request,HttpContent? content=null)=>new(HttpStatusCode.OK){RequestMessage=request,Content=content??new ByteArrayContent(bytes)};
         using(var handler=new Handler((request,n)=>n==1?throw new HttpRequestException("Transient connection failure"):Response(request))){await VerifiedDownload.FetchForTest(uri,output,10,null,CancellationToken.None,handler,TimeSpan.FromSeconds(1));check(handler.Calls==2&&File.ReadAllBytes(output).SequenceEqual(bytes),"Interrupted download did not retry safely");File.Delete(output);}
