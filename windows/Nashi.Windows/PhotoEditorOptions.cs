@@ -9,8 +9,22 @@ using Microsoft.Win32;
 namespace Nashi.Windows;
 public sealed partial class ToolEditor
 {
+    // The editor shows how the chosen cover will look instead of always painting black.
+    private Brush RedactFill()
+    {
+        switch(redactionStyle.SelectedItem as string)
+        {
+            case "solid":return Brushes.Black;
+            case "pixelate":
+            {
+                var tile=new DrawingGroup();tile.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(150,150,150)),null,new RectangleGeometry(new Rect(0,0,12,12))));tile.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(205,205,205)),null,new GeometryGroup{Children={new RectangleGeometry(new Rect(0,0,6,6)),new RectangleGeometry(new Rect(6,6,6,6))}}));
+                var brush=new DrawingBrush(tile){TileMode=TileMode.Tile,Viewport=new Rect(0,0,12,12),ViewportUnits=BrushMappingMode.Absolute,Opacity=.85};brush.Freeze();return brush;
+            }
+            default:return new SolidColorBrush(Color.FromArgb(170,235,235,235));
+        }
+    }
     private readonly List<Rect> photoRegions=[];
-    private readonly ComboBox backdrop=new(){ItemsSource=new[]{"solid","gradient","image"},SelectedIndex=0},collageLayout=new(){ItemsSource=new[]{"grid","row","column","featured"},SelectedIndex=0},redactionStyle=new(){ItemsSource=new[]{"solid","blur","pixelate"},SelectedIndex=0};
+    private readonly ComboBox backdrop=new(){ItemsSource=new[]{"solid","gradient","image"},SelectedIndex=0},collageLayout=new(){ItemsSource=new[]{"grid","row","column","featured"},SelectedIndex=0},redactionStyle=new(){ItemsSource=new[]{"blur","pixelate","solid"},SelectedIndex=0};
     private string? backgroundImage,annotationImage;private string[] collageInputs=[];private readonly ListBox imageOrder=new(){MaxHeight=140};
     private UIElement? annotationShape,selectedAnnotation;private Vector annotationOffset;private int strokeKind;private Point endPoint;private int markNumber=1;
     private System.Windows.Threading.DispatcherTimer? photoPreview;private bool showingOriginal;private readonly SemaphoreSlim previewGate=new(1,1);private long photoGeneration;
@@ -40,7 +54,7 @@ public sealed partial class ToolEditor
         }
         if(tool=="redactImage")
         {
-            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);
+            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);redactionStyle.SelectionChanged+=(_,_)=>{foreach(var area in drawing.Children.OfType<Rectangle>())area.Fill=RedactFill();};
             options.Children.Add(MainWindow.Button("Detect text",async()=>await DetectPhoto(true,false)));options.Children.Add(MainWindow.Button("Detect faces",async()=>await DetectPhoto(false,true)));
             options.Children.Add(MainWindow.Button("Undo area",()=>{if(photoRegions.Count==0)return;photoRegions.RemoveAt(photoRegions.Count-1);if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
@@ -102,7 +116,7 @@ public sealed partial class ToolEditor
     private void SetPhotoPreview(BitmapSource result){drawing.Width=result.PixelWidth;drawing.Height=result.PixelHeight;if(drawing.Children[0] is Image image){image.Source=result;image.Width=result.PixelWidth;image.Height=result.PixelHeight;}}
     private async Task DetectPhoto(bool text,bool faces)
     {
-        if(bitmap is null)return;try{var regions=await NativePdf.DetectAsync(bitmap,text,faces);foreach(var r in regions){photoRegions.Add(r);var shape=new Rectangle{Width=r.Width,Height=r.Height,Fill=Brushes.Black,Stroke=Brushes.Gold,StrokeThickness=2,IsHitTestVisible=false};Canvas.SetLeft(shape,r.X);Canvas.SetTop(shape,r.Y);drawing.Children.Add(shape);}if(regions.Length==0)MessageBox.Show(this,L10n.Text("No matching regions were detected. You can still draw areas by hand."),L10n.Text("Redact Photo"));}catch(Exception error){MessageBox.Show(this,L10n.Text(error.Message),L10n.Text("Detection unavailable"));}
+        if(bitmap is null)return;try{var regions=await NativePdf.DetectAsync(bitmap,text,faces);foreach(var r in regions){photoRegions.Add(r);var shape=new Rectangle{Width=r.Width,Height=r.Height,Fill=RedactFill(),Stroke=Brushes.Gold,StrokeThickness=2,IsHitTestVisible=false};Canvas.SetLeft(shape,r.X);Canvas.SetTop(shape,r.Y);drawing.Children.Add(shape);}if(regions.Length==0)MessageBox.Show(this,L10n.Text("No matching regions were detected. You can still draw areas by hand."),L10n.Text("Redact Photo"));}catch(Exception error){MessageBox.Show(this,L10n.Text(error.Message),L10n.Text("Detection unavailable"));}
     }
     private void AnnotationStart()
     {
