@@ -53,7 +53,7 @@ import Foundation
               for _ in 0..<3 {
                 do {
                     let player = try AVAudioPlayer(contentsOf: url)
-                    player.volume = 0.65
+                    player.volume = 0.4
                     player.numberOfLoops = 0
                     pool.append(player)
                     preparation.append(player.prepareToPlay())

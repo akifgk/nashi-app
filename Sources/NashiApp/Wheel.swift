@@ -23,6 +23,8 @@ struct WheelItem {
     private var keyboardMode=false
     private var focusObserver:NSObjectProtocol?
     private var keyWindowObserver:NSObjectProtocol?
+    private var legend:DragHintPanel?
+    private var legendMode:WheelMode?
     init(state:AppState) {
         self.state=state
         focusObserver=NotificationCenter.default.addObserver(forName:NSApplication.didResignActiveNotification,object:NSApp,queue:.main) { [weak self] _ in Task { @MainActor in if self?.keyboardMode == true { self?.hide() } } }
@@ -72,13 +74,13 @@ struct WheelItem {
             panel?.alphaValue=0;panel?.orderFrontRegardless()
             NSAnimationContext.runAnimationGroup { context in context.duration=0.13;panel?.animator().alphaValue=1 }
         } else { panel?.alphaValue=1;panel?.orderFrontRegardless() }
-        wheel?.needsDisplay=true;wheel?.updateAccessibility()
+        wheel?.needsDisplay=true;wheel?.updateAccessibility();refreshLegend(keyboard:keyboard)
         if keyboard { panel?.makeKey();panel?.makeFirstResponder(wheel) }
         if keyMonitor == nil {
             keyMonitor=NSEvent.addLocalMonitorForEvents(matching:[.keyDown,.flagsChanged]) { [weak self] event in
                 guard let self,self.panel?.isVisible == true else { return event }
-                if self.inputs.first?.isFileURL != false,event.type == .flagsChanged,let next=DragMonitor.mode(for:event.modifierFlags),next != self.mode { self.show(inputs:self.inputs,mode:next,at:NSEvent.mouseLocation,keyboard:keyboard);return nil }
-                if self.inputs.first?.isFileURL != false,event.type == .keyDown,let next=DragMonitor.mode(for:event.modifierFlags),next != self.mode { self.show(inputs:self.inputs,mode:next,at:NSEvent.mouseLocation,keyboard:keyboard);return nil }
+                if self.inputs.first?.isFileURL != false,event.type == .flagsChanged,let next=ModifierPressOrder.shared.mode(for:event.modifierFlags),next != self.mode { self.show(inputs:self.inputs,mode:next,at:NSEvent.mouseLocation,keyboard:keyboard);return nil }
+                if self.inputs.first?.isFileURL != false,event.type == .keyDown,let next=ModifierPressOrder.shared.mode(for:event.modifierFlags),next != self.mode { self.show(inputs:self.inputs,mode:next,at:NSEvent.mouseLocation,keyboard:keyboard);return nil }
                 if event.type == .keyDown { self.wheel?.keyDown(with:event);return nil };return event
             }
         }
@@ -96,7 +98,16 @@ struct WheelItem {
         }
         state.inputs=inputs;if let action=item.action { state.perform(action) };if let op=item.operation { state.select(op) }
     }
-    func hide() { keyboardMode=false;panel?.orderOut(nil);if let monitor=keyMonitor { NSEvent.removeMonitor(monitor);keyMonitor=nil } }
+    /// Shows the keys of the other two wheels under a drag wheel, so a wrong key can be corrected without restarting.
+    private func refreshLegend(keyboard:Bool) {
+        guard !keyboard,inputs.first?.isFileURL != false,DragHintPanel.enabled,let panel else { hideLegend();return }
+        if legend != nil,legendMode == mode { return }
+        hideLegend()
+        let shortcut:WheelShortcut=mode == .convert ? .conversions:mode == .tools ? .tools:.actions
+        let hint=DragHintPanel(current:shortcut);hint.placeBelow(panel);hint.show();legend=hint;legendMode=mode
+    }
+    private func hideLegend() { legend?.close();legend=nil;legendMode=nil }
+    func hide() { keyboardMode=false;hideLegend();panel?.orderOut(nil);if let monitor=keyMonitor { NSEvent.removeMonitor(monitor);keyMonitor=nil } }
     func endDrag() { if !keyboardMode { hide() } }
     deinit { if let focusObserver { NotificationCenter.default.removeObserver(focusObserver) };if let keyWindowObserver { NotificationCenter.default.removeObserver(keyWindowObserver) } }
 }
@@ -230,6 +241,8 @@ final class WheelAccessibilityItem:NSAccessibilityElement {
     private var downOrigin=NSPoint.zero
     private var session=DragPasteboardSession()
     private var traceState=""
+    private var tip:DragHintPanel?
+    private let order=ModifierPressOrder.shared
     let onActivate:([URL],WheelMode,NSPoint)->Void
     let onEnd:()->Void
     init(onEnd:@escaping()->Void,onActivate:@escaping([URL],WheelMode,NSPoint)->Void) {
@@ -246,6 +259,12 @@ final class WheelAccessibilityItem:NSAccessibilityElement {
         case nil:return nil
         }
     }
+    private func showTip(at point:NSPoint) {
+        guard DragHintPanel.enabled else { return }
+        if tip == nil { let hint=DragHintPanel(current:nil);hint.show();tip=hint }
+        tip?.move(to:point)
+    }
+    private func hideTip() { tip?.close();tip=nil }
     private func tick() {
         let down=NSEvent.pressedMouseButtons & 1 != 0 || CGEventSource.buttonState(.combinedSessionState,button:.left)
         let globalFlags=NSEvent.ModifierFlags(rawValue:UInt(CGEventSource.flagsState(.combinedSessionState).rawValue))
@@ -263,13 +282,18 @@ final class WheelAccessibilityItem:NSAccessibilityElement {
         #endif
         guard down,UserDefaults.standard.bool(forKey:"enabled") else {
             if shown { onEnd() }
+            hideTip();order.reset()
             shown=false;lastMode=nil;downOrigin=NSEvent.mouseLocation;return
         }
+        let ordered=order.mode(for:flags)
         let point=NSEvent.mouseLocation
         guard hypot(point.x-downOrigin.x,point.y-downOrigin.y)>4,fresh else { return }
-        guard let mode=Self.mode(for:flags),!shown || mode != lastMode else { return }
         let urls=WebLinkPayload.urls(from:board)
         guard !urls.isEmpty else { return }
+        // No wheel key yet: show which keys open which wheel, next to the pointer.
+        guard let mode=ordered else { if !shown { showTip(at:point) };return }
+        hideTip()
+        guard !shown || mode != lastMode else { return }
         if urls.first?.isFileURL != false || mode == .tools {
             shown=true;lastMode=mode;onActivate(urls,mode,NSEvent.mouseLocation)
         }

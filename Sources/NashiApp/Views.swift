@@ -14,6 +14,7 @@ struct SettingsView:View {
     @ObservedObject private var preferences=FormatPreferences.shared
     @AppStorage("enabled") private var enabled=true
     @AppStorage("reveal") private var reveal=true
+    @AppStorage("dragHint") private var dragHint=true
     @AppStorage("wheelScale") private var wheelScale=1.0
     @AppStorage("conversionFanTheme") private var fanTheme="glass"
     @AppStorage("soundsAndHapticsEnabled") private var feedback=true
@@ -145,6 +146,7 @@ struct SettingsView:View {
             DisclosureGroup("Additional options") { VStack(alignment:.leading,spacing:13) {
                 Toggle("Enable Nashi",isOn:$enabled)
                 Toggle("Reveal finished files in Finder",isOn:$reveal)
+                Toggle("Show key hint while dragging",isOn:$dragHint)
                 HStack { Text("Wheel size");Slider(value:$wheelScale,in:0.85...1.4).frame(width:230);Text("\(Int(wheelScale*100))%").monospacedDigit().frame(width:40) }
             }.padding(.top,12) }
         }.padding(26).frame(maxWidth:680) }.frame(maxWidth:.infinity)

@@ -400,7 +400,7 @@ struct ToolEditor:View {
     }
     var redactionControls:some View {
         VStack(alignment:.leading,spacing:12) {
-            Picker("Style",selection:$options.redactionMode) { Text("Solid").tag("black");Text("Blur").tag("blur");if tool == .redactImage { Text("Pixelate").tag("pixelate") } }.pickerStyle(.segmented)
+            Picker("Style",selection:$options.redactionMode) { Text("Blur").tag("blur");if tool == .redactImage { Text("Pixelate").tag("pixelate") };Text("Solid").tag("black") }.pickerStyle(.segmented)
             ColorPicker("Color",selection:colorBinding($options.backgroundColor),supportsOpacity:false)
             Text("Drag on the preview to add an area. Each area is saved into the new copy.").font(.caption).foregroundStyle(.secondary)
             if tool == .redactImage { HStack { Button("Detect Faces") { detectRedactions(faces:true) };Button("Detect Text") { detectRedactions(faces:false) } } }
@@ -495,7 +495,7 @@ struct ToolEditor:View {
     var metadataGroups:[String] { Array(Set(visibleMetadata.map(metadataGroup))).sorted() }
     func metadataGroup(_ key:String)->String { if let separator=key.firstIndex(of:category == .image ? ".":":") { return String(key[..<separator]) };return category == .pdf ? "Document":"File" }
     var imagePreview:some View {
-        ImageEditPreview(image:showOriginal ? baseImage.map{NSImage(cgImage:$0,size:.zero)}:image,imageSize:showOriginal ? imageSize:(previewSize ?? imageSize),crop:tool == .cropImage ? options.crop:nil,redactions:options.redactions,annotations:options.imageAnnotations,redactionColor:Color(cgColor:ImageEngine.color(options.backgroundColor).copy(alpha:1)!),zoom:previewZoom,onStroke:tool == .annotateImage && !selectingAnnotations ? addAnnotation:nil,onMoveAnnotation:{i,r,points in options.imageAnnotations[i].rect=r;options.imageAnnotations[i].points=points},onMoveRedaction:{i,r in options.redactions[i]=r},onMoveCrop:{r in setCrop(r)},cropEnabled:tool == .cropImage,cropAspectRatio:cropAspectRatio,onCropInteraction:cropInteraction,annotationStyle:tool == .annotateImage ? annotationStyle:nil,annotationSource:baseImage,selectAnnotations:selectingAnnotations) { rect in
+        ImageEditPreview(image:showOriginal ? baseImage.map{NSImage(cgImage:$0,size:.zero)}:image,imageSize:showOriginal ? imageSize:(previewSize ?? imageSize),crop:tool == .cropImage ? options.crop:nil,redactions:options.redactions,annotations:options.imageAnnotations,redactionColor:Color(cgColor:ImageEngine.color(options.backgroundColor).copy(alpha:1)!),activeRedactions:tool == .redactImage && options.redactionMode != "black" ? []:nil,zoom:previewZoom,onStroke:tool == .annotateImage && !selectingAnnotations ? addAnnotation:nil,onMoveAnnotation:{i,r,points in options.imageAnnotations[i].rect=r;options.imageAnnotations[i].points=points},onMoveRedaction:{i,r in options.redactions[i]=r},onMoveCrop:{r in setCrop(r)},cropEnabled:tool == .cropImage,cropAspectRatio:cropAspectRatio,onCropInteraction:cropInteraction,annotationStyle:tool == .annotateImage ? annotationStyle:nil,annotationSource:baseImage,selectAnnotations:selectingAnnotations) { rect in
             switch tool {
             case .cropImage: setCrop(rect)
             case .redactImage: options.redactions.append(rect)
@@ -609,7 +609,7 @@ struct ToolEditor:View {
             if tool == .frameImage { options.imageFrame = .init() }
             if tool == .createCollage { options.collage = .init() }
             if tool == .audioToVideo { width=1920;height=1080;options.backgroundColor="#000000" }
-            if tool == .redactVideo || tool == .redactImage { options.backgroundColor="#000000";options.redactionMode="black" }
+            if tool == .redactVideo || tool == .redactImage { options.backgroundColor="#000000";options.redactionMode=tool == .redactImage ? "blur":"black" }
             try checkGeneration(generation,token:token);readyToApply=true
         } catch {
             if generation==editorGeneration,!token.isCancelled,!Task.isCancelled { previewError=error.localizedDescription }
