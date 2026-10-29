@@ -72,8 +72,8 @@ internal static class Feedback
         try
         {
             var directory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi");Directory.CreateDirectory(directory);var file=Path.Combine(directory,"WheelSelection.wav");
-            if(!File.Exists(file)){using var source=Application.GetResourceStream(new Uri("pack://application:,,,/Assets/WheelSelection.wav")).Stream;using var target=File.Create(file);source.CopyTo(target);}
-            if(player is null){var created=new MediaPlayer{Volume=.65};player=created;created.MediaOpened+=(_,_)=>{if(Enabled&&ReferenceEquals(player,created))created.Play();};created.Open(new Uri(file));}else{player.Position=TimeSpan.Zero;player.Play();}
+            {using var source=Application.GetResourceStream(new Uri("pack://application:,,,/Assets/WheelSelection.wav")).Stream;if(!File.Exists(file)||new FileInfo(file).Length!=source.Length){Stop();using var target=File.Create(file);source.CopyTo(target);}}
+            if(player is null){var created=new MediaPlayer{Volume=.8};player=created;created.MediaOpened+=(_,_)=>{if(Enabled&&ReferenceEquals(player,created))created.Play();};created.Open(new Uri(file));}else{player.Position=TimeSpan.Zero;player.Play();}
 
         }catch(IOException){}catch(InvalidOperationException){}
     }
