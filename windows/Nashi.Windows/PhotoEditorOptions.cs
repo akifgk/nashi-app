@@ -10,6 +10,23 @@ namespace Nashi.Windows;
 public sealed partial class ToolEditor
 {
     // The editor shows how the chosen cover will look instead of always painting black.
+    // A finished blur cover shows the real blurred pixels, computed exactly as the export does.
+    private Brush RedactFillFor(Rectangle area)
+    {
+        if(redactionStyle.SelectedItem as string=="blur"&&bitmap is not null&&!ReferenceEquals(area,activeRectangle)&&area.Width>=1&&area.Height>=1)
+        {
+            try
+            {
+                var x=(int)Math.Clamp(Canvas.GetLeft(area),0,bitmap.PixelWidth-1);var y=(int)Math.Clamp(Canvas.GetTop(area),0,bitmap.PixelHeight-1);
+                var w=(int)Math.Clamp(area.Width,1,bitmap.PixelWidth-x);var h=(int)Math.Clamp(area.Height,1,bitmap.PixelHeight-y);
+                var crop=new CroppedBitmap(bitmap,new Int32Rect(x,y,w,h));
+                var brush=new ImageBrush(ImageEngine.FromPng(Nashi.Core.PhotoCodec.BlurRegion(ImageEngine.PngBytes(crop),Math.Max(14,Math.Min(w,h)/5))))
+                {Stretch=Stretch.Fill};brush.Freeze();return brush;
+            }
+            catch(Exception error)when(error is ArgumentException or InvalidOperationException or IOException or NotSupportedException){}
+        }
+        return RedactFill();
+    }
     private Brush RedactFill()
     {
         switch(redactionStyle.SelectedItem as string)
@@ -54,7 +71,7 @@ public sealed partial class ToolEditor
         }
         if(tool=="redactImage")
         {
-            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);redactionStyle.SelectionChanged+=(_,_)=>{foreach(var area in drawing.Children.OfType<Rectangle>())area.Fill=RedactFill();};
+            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);redactionStyle.SelectionChanged+=(_,_)=>{foreach(var area in drawing.Children.OfType<Rectangle>())area.Fill=RedactFillFor(area);};
             options.Children.Add(MainWindow.Button("Detect text",async()=>await DetectPhoto(true,false)));options.Children.Add(MainWindow.Button("Detect faces",async()=>await DetectPhoto(false,true)));
             options.Children.Add(MainWindow.Button("Undo area",()=>{if(photoRegions.Count==0)return;photoRegions.RemoveAt(photoRegions.Count-1);if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
