@@ -39,7 +39,8 @@ public enum WebDownloadEngine {
         let name=host.lowercased().trimmingCharacters(in:CharacterSet(charactersIn:"[]."))
         if name == "localhost" || name.hasSuffix(".localhost") { return true }
         var v4=in_addr()
-        if inet_pton(AF_INET,name,&v4) == 1 {
+        // inet_aton also reads the short and numeric forms a resolver accepts (127.1, 2130706433, 0x7f.1).
+        if inet_aton(name,&v4) != 0 {
             let a=UInt32(bigEndian:v4.s_addr)
             let first=a>>24,second=(a>>16)&0xff
             return first == 0 || first == 10 || first == 127 || (first == 169 && second == 254) || (first == 172 && (16...31).contains(second)) || (first == 192 && second == 168) || (first == 100 && (64...127).contains(second))

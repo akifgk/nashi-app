@@ -7,7 +7,7 @@ final class WebDownloadTests:XCTestCase {
         XCTAssertEqual(try WebDownloadEngine.link("  https://example.org/a?q=a%20b  ").host,"example.org")
     }
     func testPrivateAndLocalHostsAreRejected() throws {
-        for value in ["http://localhost/a.mp4","http://app.localhost/a","http://127.0.0.1/a","http://10.1.2.3/a","http://172.20.0.1/a","http://192.168.0.5/a","http://169.254.169.254/a","http://100.64.0.1/a","http://[::1]/a","http://[fe80::1]/a","http://[fd00::1]/a","http://[::ffff:10.0.0.1]/a"] { XCTAssertThrowsError(try WebDownloadEngine.link(value),value) }
+        for value in ["http://localhost/a.mp4","http://app.localhost/a","http://127.0.0.1/a","http://10.1.2.3/a","http://172.20.0.1/a","http://192.168.0.5/a","http://169.254.169.254/a","http://100.64.0.1/a","http://[::1]/a","http://[fe80::1]/a","http://[fd00::1]/a","http://[::ffff:10.0.0.1]/a","http://127.1/a","http://2130706433/a","http://0x7f.1/a","http://0177.0.0.1/a","http://167772161/a"] { XCTAssertThrowsError(try WebDownloadEngine.link(value),value) }
         for value in ["https://example.org/a","http://8.8.8.8/a","http://172.32.0.1/a","http://[2606:4700::1111]/a"] { XCTAssertNoThrow(try WebDownloadEngine.link(value),value) }
     }
     func testManifestsAndHTMLAreNotDirectMedia() {

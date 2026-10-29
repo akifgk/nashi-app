@@ -24,6 +24,7 @@ internal static class DownloadChecks
             catch(HttpRequestException error){check(!listener.Pending()&&error.ToString().Contains("private network"),"A name that resolves to this computer is refused before the connection is made");}
         }
         finally{listener.Stop();}
+        foreach(var name in new[]{"http://127.1/a","http://2130706433/a","http://0x7f.1/a","http://167772161/a"})try{WebDownload.Validate(name);check(false,"Short or numeric loopback form accepted: "+name);}catch(ArgumentException){check(true,"Short and numeric IPv4 forms of private addresses are refused");}
         foreach(var name in new[]{"http://localhost./a","http://app.localhost./a","http://printer.local./a"})try{WebDownload.Validate(name);check(false,"Trailing-dot local name accepted: "+name);}catch(ArgumentException){check(true,"Trailing-dot local names are refused");}
         var uri=new Uri("https://download.example/fixture");var output=Path.Combine(root,"Download.bin");var bytes=new byte[]{1,2,3};
         HttpResponseMessage Response(HttpRequestMessage request,HttpContent? content=null)=>new(HttpStatusCode.OK){RequestMessage=request,Content=content??new ByteArrayContent(bytes)};
