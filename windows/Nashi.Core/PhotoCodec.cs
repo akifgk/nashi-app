@@ -95,18 +95,15 @@ public static class PhotoCodec
     }
     /// Lossless PNG with maximum zlib effort, adaptive filtering and no unused alpha channel
     /// (WPF's encoder writes unfiltered 32-bit PNGs that are several times larger).
-    public static void OptimizePng(byte[] png,string output)
-    {
-        using var image=new MagickImage(png,new MagickReadSettings{Format=MagickFormat.Png});
-        if(image.HasAlpha&&image.IsOpaque)image.HasAlpha=false;
-        image.Strip();image.Quality=95;image.Write(output,MagickFormat.Png);
-    }
+    /// Never overwrites an existing file. The output is always 8-bit RGB or RGBA: left alone, Magick picks grey or
+    /// 1-4 bit palette PNGs for simple images, which PdfSharp (Image to PDF) cannot read.
     public static void OptimizePngPixels(byte[] bgra,int width,int height,string output)
     {
         if(width<1||height<1||bgra.Length<(long)width*height*4)throw new ArgumentException("Choose a nonempty image.");
         using var image=new MagickImage();image.ReadPixels(bgra,new PixelReadSettings((uint)width,(uint)height,StorageType.Char,PixelMapping.BGRA));image.ColorSpace=ColorSpace.sRGB;
         if(image.HasAlpha&&image.IsOpaque)image.HasAlpha=false;
-        image.Strip();image.Quality=95;image.Write(output,MagickFormat.Png);
+        image.Strip();image.Quality=95;image.Depth=8;image.Settings.SetDefine(MagickFormat.Png,"color-type",image.HasAlpha?"6":"2");
+        using var file=new FileStream(output,FileMode.CreateNew,FileAccess.Write,FileShare.None);image.Write(file,MagickFormat.Png);
     }
     /// Strong blur for redaction: works on a reduced copy so large sigmas stay fast and unrecognizable.
     public static byte[] BlurRegion(byte[] png,double sigma)
