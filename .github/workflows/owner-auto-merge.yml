@@ -1,0 +1,40 @@
+name: Owner PR auto-merge
+on:
+  workflow_run:
+    workflows: [Source checks, Windows preview]
+    types: [completed]
+  pull_request_target:
+    types: [ready_for_review]
+    branches: [main]
+permissions: {}
+concurrency:
+  group: owner-merge-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  merge:
+    if: >-
+      github.repository == 'orkunisitmak/nashi-app' &&
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.conclusion == 'success') ||
+       (github.event_name == 'pull_request_target' &&
+        github.event.pull_request.user.id == 68860338 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        !github.event.pull_request.draft))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      pages: write
+    steps:
+      # Privileged job: only trusted main is checked out. Never PR code/artifacts.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Merge only checked owner PRs and preserve post-merge builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/owner-auto-merge.py

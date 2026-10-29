@@ -1,0 +1,48 @@
+{
+  "sources": [
+    {
+      "name": "cupertino-files",
+      "version": "0.4.0",
+      "url": "https://registry.npmjs.org/cupertino-files/-/cupertino-files-0.4.0.tgz",
+      "sha256": "d75183c0dc0168b43e2d28462943b0b47f51428466df48b48a0d408100d54327",
+      "gitHead": "8a539ad4b75d9650a42c876083e96f1c4ddf3ccc",
+      "license": "MIT; BSD-3-Clause LZVN decoder"
+    },
+    {
+      "name": "@esbuild/darwin-arm64",
+      "version": "0.25.12",
+      "url": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz",
+      "sha256": "2e0d011f852e45046ca5c107db54cfc56338f77aca49d227a063696d958451d7",
+      "gitHead": "208f539945b145e7c9d6d844290f81c3fe5af320",
+      "license": "MIT (build tool only)"
+    },
+    {
+      "name": "PicoMLX/PicoDocs empty-table donor source",
+      "url": "https://raw.githubusercontent.com/PicoMLX/PicoDocs/5c18743d3d8120a76da124bd512a3cf5bcc28e82/Tests/PicoDocsTests/Resources/sample.pages",
+      "sha256": "4714477138d0a4090fc2ee2ba2ebb6adcd0fb6ce20a28897a6247a8e17d1ddce",
+      "gitHead": "5c18743d3d8120a76da124bd512a3cf5bcc28e82",
+      "license": "MIT"
+    },
+    {
+      "name": "PicoMLX/PicoDocs license",
+      "url": "https://raw.githubusercontent.com/PicoMLX/PicoDocs/5c18743d3d8120a76da124bd512a3cf5bcc28e82/LICENSE",
+      "sha256": "73d43facffd8a09b91940ab1596f1601b49d3301acf48da00d8fa74aaf4005b0",
+      "license": "MIT"
+    }
+  ],
+  "bundle": {
+    "path": "Resources/PagesInterop.js",
+    "sha256": "2d351615bc5d9a933b31910639f8996b7ceb657716d0c45af1b313dee7ceb801",
+    "bytes": 1013981
+  },
+  "seed": {
+    "sha256": "bbc1f8060c4a5507db03db0d300666ff0334e888dc5004f7554b53500a76f626",
+    "transformation": "Public PicoDocs MIT fixture body, all text storages and cell values emptied; table merges removed; headers and footer bands disabled; previews and Data media stripped. No original reference-app resource is used."
+  },
+  "adapter": {
+    "path": "scripts/pages-interop-entry.js",
+    "sha256": "b51370134eed50a6e19ac1c6f0515d3c315b15312bbfa77cf3e5d47d6545d45e"
+  },
+  "runtime": "macOS JavaScriptCore; no Node process, network or Apple Pages automation",
+  "brandMigration": "Nashi: adapter/global callback identifiers renamed; upstream pinned packages, donor source and licenses are unchanged."
+}

@@ -1,0 +1,696 @@
+{
+  "conversionMatrix": {
+    "jpg": [
+      "png",
+      "webp",
+      "heic",
+      "tiff",
+      "avif",
+      "bmp",
+      "pdf"
+    ],
+    "png": [
+      "jpg",
+      "webp",
+      "heic",
+      "tiff",
+      "avif",
+      "bmp",
+      "pdf"
+    ],
+    "webp": [
+      "jpg",
+      "png",
+      "heic",
+      "tiff",
+      "avif",
+      "bmp",
+      "pdf"
+    ],
+    "heic": [
+      "jpg",
+      "png",
+      "webp",
+      "tiff",
+      "avif",
+      "bmp",
+      "pdf"
+    ],
+    "tiff": [
+      "jpg",
+      "png",
+      "webp",
+      "heic",
+      "avif",
+      "bmp",
+      "pdf"
+    ],
+    "svg": [
+      "jpg",
+      "png",
+      "webp",
+      "heic",
+      "tiff",
+      "avif",
+      "bmp",
+      "pdf"
+    ],
+    "avif": [
+      "jpg",
+      "png",
+      "webp",
+      "heic",
+      "tiff",
+      "bmp",
+      "pdf"
+    ],
+    "bmp": [
+      "jpg",
+      "png",
+      "webp",
+      "heic",
+      "tiff",
+      "avif",
+      "pdf"
+    ],
+    "mp3": [
+      "m4a",
+      "wav",
+      "flac",
+      "ogg",
+      "opus",
+      "aiff",
+      "wma"
+    ],
+    "m4a": [
+      "mp3",
+      "wav",
+      "flac",
+      "ogg",
+      "opus",
+      "aiff",
+      "wma"
+    ],
+    "wav": [
+      "mp3",
+      "m4a",
+      "flac",
+      "ogg",
+      "opus",
+      "aiff",
+      "wma"
+    ],
+    "flac": [
+      "mp3",
+      "m4a",
+      "wav",
+      "ogg",
+      "opus",
+      "aiff",
+      "wma"
+    ],
+    "ogg": [
+      "mp3",
+      "m4a",
+      "wav",
+      "flac",
+      "opus",
+      "aiff",
+      "wma"
+    ],
+    "opus": [
+      "mp3",
+      "m4a",
+      "wav",
+      "flac",
+      "ogg",
+      "aiff",
+      "wma"
+    ],
+    "aiff": [
+      "mp3",
+      "m4a",
+      "wav",
+      "flac",
+      "ogg",
+      "opus",
+      "wma"
+    ],
+    "wma": [
+      "mp3",
+      "m4a",
+      "wav",
+      "flac",
+      "ogg",
+      "opus",
+      "aiff"
+    ],
+    "mp4": [
+      "mov",
+      "mkv",
+      "webm",
+      "avi",
+      "wmv",
+      "gif",
+      "mp3"
+    ],
+    "mov": [
+      "mp4",
+      "mkv",
+      "webm",
+      "avi",
+      "wmv",
+      "gif",
+      "mp3"
+    ],
+    "mkv": [
+      "mp4",
+      "mov",
+      "webm",
+      "avi",
+      "wmv",
+      "gif",
+      "mp3"
+    ],
+    "webm": [
+      "mp4",
+      "mov",
+      "mkv",
+      "avi",
+      "wmv",
+      "gif",
+      "mp3"
+    ],
+    "avi": [
+      "mp4",
+      "mov",
+      "mkv",
+      "webm",
+      "wmv",
+      "gif",
+      "mp3"
+    ],
+    "wmv": [
+      "mp4",
+      "mov",
+      "mkv",
+      "webm",
+      "avi",
+      "gif",
+      "mp3"
+    ],
+    "gif": [
+      "mp4",
+      "mov",
+      "mkv",
+      "webm",
+      "avi",
+      "wmv"
+    ],
+    "pdf": [
+      "docx",
+      "pages",
+      "pptx",
+      "xlsx",
+      "jpg",
+      "png",
+      "epub",
+      "txt",
+      "md"
+    ],
+    "ppt": [
+      "pdf",
+      "jpg",
+      "png"
+    ],
+    "pptx": [
+      "pdf",
+      "jpg",
+      "png"
+    ],
+    "docx": [
+      "pages",
+      "pdf",
+      "txt",
+      "md",
+      "html",
+      "epub",
+      "png",
+      "jpg"
+    ],
+    "pages": [
+      "docx",
+      "pdf",
+      "txt",
+      "md",
+      "html",
+      "epub",
+      "png",
+      "jpg"
+    ],
+    "md": [
+      "docx",
+      "pages",
+      "pdf",
+      "txt",
+      "html",
+      "epub",
+      "png",
+      "jpg"
+    ],
+    "rtf": [
+      "docx",
+      "pages",
+      "pdf",
+      "txt",
+      "md",
+      "html",
+      "epub",
+      "png",
+      "jpg"
+    ],
+    "rtfd": [
+      "docx",
+      "pages",
+      "pdf",
+      "txt",
+      "md",
+      "html",
+      "epub",
+      "png",
+      "jpg"
+    ],
+    "textclipping": [
+      "docx",
+      "pages",
+      "pdf",
+      "txt",
+      "md",
+      "html",
+      "epub",
+      "png",
+      "jpg"
+    ],
+    "epub": [
+      "pdf",
+      "docx",
+      "pages",
+      "txt",
+      "md",
+      "html"
+    ],
+    "txt": [
+      "docx",
+      "pages",
+      "pdf",
+      "md",
+      "html",
+      "epub",
+      "jpg",
+      "png"
+    ],
+    "xlsx": [
+      "ods",
+      "csv",
+      "tsv",
+      "pdf"
+    ],
+    "xls": [
+      "xlsx",
+      "ods",
+      "csv",
+      "tsv",
+      "pdf"
+    ],
+    "ods": [
+      "xlsx",
+      "csv",
+      "tsv",
+      "pdf"
+    ],
+    "csv": [
+      "xlsx",
+      "ods",
+      "tsv",
+      "pdf"
+    ],
+    "tsv": [
+      "xlsx",
+      "ods",
+      "csv",
+      "pdf"
+    ],
+    "srt": [
+      "vtt",
+      "txt"
+    ],
+    "vtt": [
+      "srt",
+      "txt"
+    ],
+    "zip": [
+      "tar",
+      "gz"
+    ],
+    "tar": [
+      "zip",
+      "gz"
+    ],
+    "gz": [
+      "zip",
+      "tar"
+    ],
+    "rar": [
+      "zip",
+      "tar",
+      "gz"
+    ]
+  },
+  "singleTools": {
+    "jpg": [
+      "compress",
+      "removeMetadata",
+      "editImage",
+      "annotateImage",
+      "frameImage",
+      "cropImage",
+      "redactImage"
+    ],
+    "png": [
+      "compress",
+      "removeMetadata",
+      "editImage",
+      "annotateImage",
+      "frameImage",
+      "cropImage",
+      "redactImage"
+    ],
+    "webp": [
+      "compress",
+      "removeMetadata",
+      "editImage",
+      "annotateImage",
+      "frameImage",
+      "cropImage",
+      "redactImage"
+    ],
+    "heic": [
+      "compress",
+      "removeMetadata",
+      "editImage",
+      "annotateImage",
+      "frameImage",
+      "cropImage",
+      "redactImage"
+    ],
+    "tiff": [
+      "compress",
+      "removeMetadata",
+      "editImage",
+      "annotateImage",
+      "frameImage",
+      "cropImage",
+      "redactImage"
+    ],
+    "svg": [],
+    "avif": [],
+    "bmp": [],
+    "mp3": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio",
+      "audioToVideo",
+      "trimAudio",
+      "audioChannels",
+      "redactAudio"
+    ],
+    "m4a": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio",
+      "audioToVideo",
+      "trimAudio",
+      "audioChannels",
+      "redactAudio"
+    ],
+    "wav": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio",
+      "audioToVideo",
+      "trimAudio",
+      "audioChannels",
+      "redactAudio"
+    ],
+    "flac": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio",
+      "audioToVideo",
+      "trimAudio",
+      "audioChannels",
+      "redactAudio"
+    ],
+    "ogg": [],
+    "opus": [],
+    "aiff": [],
+    "wma": [],
+    "mp4": [
+      "compress",
+      "removeMetadata",
+      "muteVideo",
+      "trimVideo",
+      "cropVideo",
+      "changeVideoSpeed",
+      "videoSnapshots",
+      "splitVideo",
+      "redactVideo"
+    ],
+    "mov": [
+      "compress",
+      "removeMetadata",
+      "muteVideo",
+      "trimVideo",
+      "cropVideo",
+      "changeVideoSpeed",
+      "videoSnapshots",
+      "splitVideo",
+      "redactVideo"
+    ],
+    "mkv": [
+      "compress",
+      "removeMetadata",
+      "muteVideo",
+      "trimVideo",
+      "cropVideo",
+      "changeVideoSpeed",
+      "videoSnapshots",
+      "splitVideo",
+      "redactVideo"
+    ],
+    "webm": [],
+    "avi": [],
+    "wmv": [],
+    "gif": [
+      "removeMetadata"
+    ],
+    "pdf": [
+      "compress",
+      "removeMetadata",
+      "splitPDF",
+      "organizePDF"
+    ],
+    "ppt": [],
+    "pptx": [],
+    "docx": [],
+    "pages": [],
+    "md": [],
+    "rtf": [],
+    "rtfd": [],
+    "textclipping": [],
+    "epub": [],
+    "txt": [],
+    "xlsx": [],
+    "xls": [],
+    "ods": [],
+    "csv": [],
+    "tsv": [],
+    "srt": [],
+    "vtt": [],
+    "zip": [
+      "extractArchive"
+    ],
+    "tar": [
+      "extractArchive"
+    ],
+    "gz": [
+      "extractArchive"
+    ],
+    "rar": [
+      "extractArchive"
+    ]
+  },
+  "multipleTools": {
+    "jpg": [
+      "compress",
+      "removeMetadata",
+      "cropImage",
+      "createPDF",
+      "createCollage"
+    ],
+    "png": [
+      "compress",
+      "removeMetadata",
+      "cropImage",
+      "createPDF",
+      "createCollage"
+    ],
+    "webp": [
+      "compress",
+      "removeMetadata",
+      "cropImage",
+      "createPDF",
+      "createCollage"
+    ],
+    "heic": [
+      "compress",
+      "removeMetadata",
+      "cropImage",
+      "createPDF",
+      "createCollage"
+    ],
+    "tiff": [
+      "compress",
+      "removeMetadata",
+      "cropImage",
+      "createPDF",
+      "createCollage"
+    ],
+    "svg": [
+      "createPDF",
+      "createCollage"
+    ],
+    "avif": [],
+    "bmp": [],
+    "mp3": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio"
+    ],
+    "m4a": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio"
+    ],
+    "wav": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio"
+    ],
+    "flac": [
+      "compress",
+      "removeMetadata",
+      "normalizeAudio"
+    ],
+    "ogg": [],
+    "opus": [],
+    "aiff": [],
+    "wma": [],
+    "mp4": [
+      "compress",
+      "removeMetadata",
+      "muteVideo",
+      "joinVideos"
+    ],
+    "mov": [
+      "compress",
+      "removeMetadata",
+      "muteVideo",
+      "joinVideos"
+    ],
+    "mkv": [
+      "compress",
+      "removeMetadata",
+      "muteVideo",
+      "joinVideos"
+    ],
+    "webm": [],
+    "avi": [],
+    "wmv": [],
+    "gif": [
+      "removeMetadata"
+    ],
+    "pdf": [
+      "compress",
+      "removeMetadata",
+      "splitPDF",
+      "mergePDF"
+    ],
+    "ppt": [],
+    "pptx": [],
+    "docx": [],
+    "pages": [],
+    "md": [],
+    "rtf": [],
+    "rtfd": [],
+    "textclipping": [],
+    "epub": [],
+    "txt": [],
+    "xlsx": [],
+    "xls": [],
+    "ods": [],
+    "csv": [],
+    "tsv": [],
+    "srt": [],
+    "vtt": [],
+    "zip": [
+      "extractArchive"
+    ],
+    "tar": [
+      "extractArchive"
+    ],
+    "gz": [
+      "extractArchive"
+    ],
+    "rar": [
+      "extractArchive"
+    ]
+  },
+  "toolNames": {
+    "compress": "Compress",
+    "removeMetadata": "Metadata",
+    "editImage": "Edit Photo",
+    "annotateImage": "Annotate Photo",
+    "frameImage": "Add BG",
+    "cropImage": "Crop Image",
+    "normalizeAudio": "Normalize Volume",
+    "muteVideo": "Remove Audio",
+    "trimVideo": "Trim Video",
+    "splitPDF": "Split PDF",
+    "organizePDF": "Organize PDF",
+    "extractArchive": "Extract Archive",
+    "createPDF": "Create PDF",
+    "mergePDF": "Merge PDFs",
+    "cropVideo": "Crop Video",
+    "changeVideoSpeed": "Change Video Speed",
+    "joinVideos": "Join Videos",
+    "videoSnapshots": "Video Snapshots",
+    "splitVideo": "Split Video",
+    "audioToVideo": "Audio Visualizer",
+    "trimAudio": "Trim Audio",
+    "audioChannels": "Convert Audio Channels",
+    "createCollage": "Create Collage",
+    "redactImage": "Redact Photo",
+    "redactVideo": "Redact Video",
+    "redactAudio": "Bleep Audio",
+    "readQRCode": "Read QR Codes"
+  },
+  "fileActions": [
+    "share",
+    "float",
+    "copy",
+    "move",
+    "copyPath",
+    "terminal"
+  ]
+}

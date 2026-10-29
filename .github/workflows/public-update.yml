@@ -1,0 +1,98 @@
+name: Public Windows update verification
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify anonymous download, replacement, restart and Library persistence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml]$versionProps = Get-Content windows/Directory.Build.props
+          $expectedVersion = [string]$versionProps.Project.PropertyGroup.Version
+          if ($expectedVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          $proof = Join-Path $env:GITHUB_WORKSPACE 'build/public-update-proof'
+          New-Item -ItemType Directory -Force $proof | Out-Null
+          $base = 'https://github.com/orkunisitmak/nashi-app/releases/download/v0.7.1-31/'
+          $zip = Join-Path $proof 'initial.zip'
+          $manifest = Join-Path $proof 'initial.json'
+          Invoke-WebRequest ($base + 'Nashi-Windows-x64.zip') -OutFile $zip
+          Invoke-WebRequest ($base + 'windows-update.json') -OutFile $manifest
+          $env:NASHI_VERIFY_UPDATE_MANIFEST = $manifest
+          $env:NASHI_VERIFY_UPDATE_ARCHIVE = $zip
+          dotnet run --project windows/Nashi.Verify -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $data = Join-Path $env:LOCALAPPDATA 'Nashi'
+          $imports = Join-Path $data 'Imports'
+          New-Item -ItemType Directory -Force $imports | Out-Null
+          $text = Join-Path $imports 'Update persistence.txt'
+          $image = Join-Path $imports 'Update persistence.png'
+          'Persistent clipboard · Türkçe 🍐' | Set-Content -Encoding utf8 $text
+          Copy-Item Resources/Brand/NashiIcon.png $image
+          $state = Join-Path $data 'library.json'
+          @{ Appearance = 'dark'; Entries = @(@{ Id = [guid]::NewGuid().ToString(); Created = [DateTimeOffset]::Now.ToString('o'); Action = 'Update persistence fixture'; Paths = @($text,$image) }) } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 $state
+          # This disposable profile closes on X so the test can read saved state.
+          # The normal product default deliberately keeps running in the tray.
+          $preferences = Join-Path $data 'preferences.json'
+          @{ KeepInTray = $false; AutomaticUpdateChecks = $true } | ConvertTo-Json | Set-Content -Encoding utf8 $preferences
+          $preferencesHash = (Get-FileHash $preferences).Hash
+          $stateHash = (Get-FileHash $state).Hash
+          $textHash = (Get-FileHash $text).Hash
+          $imageHash = (Get-FileHash $image).Hash
+          $target = Join-Path $env:RUNNER_TEMP 'Nashi-Portable-Update'
+          Expand-Archive $zip $target
+          $old = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion
+          powershell.exe -NoProfile -STA -File scripts/verify-windows-update-ui.ps1 -AppPath (Join-Path $target 'Nashi.exe') -ExpectedVersion $expectedVersion -ProofPath (Join-Path $proof 'native-update-ui.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The native update UI test failed' }
+          $new = $old
+          $restarted = $null
+          for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Seconds 2
+            if (Test-Path (Join-Path $target 'Nashi.dll')) { $new = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'Nashi.dll')).FileVersion }
+            $restarted = Get-Process -Name Nashi -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq (Join-Path $target 'Nashi.exe') -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+            if ([version]$new -gt [version]$old -and $null -ne $restarted) { break }
+          }
+          if ([version]$new -le [version]$old) { throw 'Installed version did not advance' }
+          if ($null -eq $restarted) { throw 'Updated app did not reopen a native window' }
+          $restartedId = $restarted.Id
+          $restartedHandle = $restarted.Handle
+          $restarted.CloseMainWindow() | Out-Null
+          if (!$restarted.WaitForExit(15000)) { throw 'Updated app did not close normally' }
+          if ($restarted.ExitCode -ne 0) { throw "Updated app exited with code $($restarted.ExitCode)" }
+          if ((Get-FileHash $preferences).Hash -ne $preferencesHash) { throw 'Update changed saved preferences' }
+          if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $text).Hash -ne $textHash -or (Get-FileHash $image).Hash -ne $imageHash) { throw 'Update changed saved Library or clipboard imports' }
+          function Invoke-UpdatedFixture([string] $argument, [string] $directory, [int] $timeout) {
+            $env:NASHI_SMOKE_DIRECTORY = Join-Path $proof $directory
+            $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $target 'Nashi.exe'))
+            $start.UseShellExecute = $false
+            $start.ArgumentList.Add($argument)
+            $check = [Diagnostics.Process]::Start($start)
+            try {
+              $handle = $check.Handle
+              if (!$check.WaitForExit($timeout)) { $check.Kill($true); throw "Updated fixture timed out: $argument" }
+              if ($check.ExitCode -ne 0) { throw "Updated fixture failed: $argument; exit $($check.ExitCode)" }
+            } finally { $check.Dispose() }
+          }
+          Invoke-UpdatedFixture '--verify-update-state' 'preserved-state' 60000
+          Invoke-UpdatedFixture '--smoke-test' 'updated-native-smoke' 900000
+          @{ oldVersion = $old; newVersion = $new; anonymous = $true; signedArchiveVerified = $true; realInstallerAndRestart = $true; restartedProcessId = $restartedId; libraryAndClipboardPreserved = $true; preferencesPreserved = $true; nativeUpdateUi = $true } | ConvertTo-Json | Set-Content (Join-Path $proof 'result.json')
+          Get-Content (Join-Path $proof 'result.json')
+          Remove-Item $zip
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: public-windows-update-proof
+          path: build/public-update-proof
+          retention-days: 7

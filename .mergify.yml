@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://docs.mergify.com/mergify-configuration-schema.json
+# Phase 1: observations only. Empty action maps intentionally perform no writes.
+# No merge, queue, update, rebase, review, labels or comments are authorized here.
+pull_request_rules:
+  - name: "Observe main PRs awaiting a maintainer decision"
+    conditions: ["base=main", "-draft"]
+    actions: {}
+  - name: "Observe all three required check names successful; not merge permission"
+    conditions:
+      - base=main
+      - "-draft"
+      - check-success=security
+      - check-success=mac-source
+      - check-success=windows
+    actions: {}
+  - name: "Observe sensitive changes requiring explicit human review"
+    conditions:
+      - base=main
+      - "-draft"
+      - 'files~=(^\.github/|^\.(coderabbit|mergify)|^Configuration/|^scripts/|^Sources/(NashiUpdates|TangerineUpdates|UpdateCredentialBroker)/|^Sources/NashiCore/(ProcessRunner|ExportTransaction|ArchiveCodec|WebDownload)|(^|/)(Package\.(swift|resolved)|[^/]*\.csproj|[^/]*\.props|packages\.lock\.json|package(-lock)?\.json|SECURITY\.md|AGENTS\.md|CLAUDE\.md)$)'
+    actions: {}
+  - name: "Observe same-repository Markdown-only CI; still manual"
+    conditions:
+      - base=main
+      - "-draft"
+      - "-conflict"
+      - "-from-fork"
+      - "#files>0"
+      - '-files~=^(?!(?:README(?:\.tr)?\.md|docs/(?:[^/]+/)*[^/]+\.md)$).+'
+      - check-success=security
+      - check-success=mac-source
+      - check-success=windows
+    actions: {}
+
+# #files cannot be negative: all branch-writing/queue commands are disabled in
+# phase 1, including for the owner. Keep identity/permission checks when a future
+# separately approved change removes this guard. Labels and PR authors do not
+# authenticate the person issuing a comment command.
+commands_restrictions:
+  backport:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  copy:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  dequeue:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  queue:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  requeue:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  rebase:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  squash:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  update:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin", "#files<0"]
+  refresh:
+    conditions: ["sender=orkunisitmak", "sender-permission=admin"]

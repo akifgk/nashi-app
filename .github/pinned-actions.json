@@ -1,0 +1,17 @@
+{
+  "checkout": {
+    "repository": "actions/checkout",
+    "tag": "v6",
+    "commit": "d23441a48e516b6c34aea4fa41551a30e30af803"
+  },
+  "setup-dotnet": {
+    "repository": "actions/setup-dotnet",
+    "tag": "v5",
+    "commit": "26b0ec14cb23fa6904739307f278c14f94c95bf1"
+  },
+  "upload-artifact": {
+    "repository": "actions/upload-artifact",
+    "tag": "v6",
+    "commit": "b7c566a772e6b6bfb58ed0dc250532a479d7789f"
+  }
+}

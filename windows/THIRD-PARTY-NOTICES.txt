@@ -1,0 +1,24 @@
+Nashi for Windows. Copyright 2026 Nashi contributors. MIT.
+Independent app inspired by Tangerine; not affiliated with LEAP STUDIO.
+
+.NET 10 / WPF, Microsoft and contributors, MIT.
+https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+https://github.com/dotnet/wpf/blob/main/LICENSE.TXT
+
+PDFsharp 6.2.4, empira and contributors, MIT.
+https://github.com/empira/PDFsharp/blob/master/LICENSE
+BouncyCastle.Cryptography 2.7.0, The Legion of the Bouncy Castle Inc., MIT.
+https://github.com/bcgit/bc-csharp/blob/master/LICENSE.md
+Exact NuGet packages and transitive dependency licenses are recorded in the
+committed packages.lock.json files and Windows dependency inventory.
+Media tools are downloaded separately from pinned upstream releases after the
+user chooses setup; their licenses and source references are shown by setup.
+
+Additional Windows interoperability libraries:
+- PDFium 155.0.8044.0 via bblanchon.PDFium.Win32 155.0.8044: CPU PDF preview/rendering; Apache-2.0 packaging, PDFium BSD-style and bundled dependency notices. Matching binary provenance and complete licenses: licenses/PDFium-THIRD-PARTY-NOTICES.txt. No JavaScript platform or external link actions are enabled by Nashi's read-only form preview.
+- Magick.NET 15.0.0 and Magick.NET.Core: Apache-2.0, https://github.com/dlemstra/Magick.NET. Full native dependency licenses are in licenses/Magick.NET-THIRD-PARTY-NOTICES.txt.
+- ZXing.Net 0.16.11: Apache-2.0, Michael Jahn and contributors, https://github.com/micjahn/ZXing.Net.
+- SharpCompress 0.50.5: MIT, Adam Hathcock and contributors, https://github.com/adamhathcock/sharpcompress.
+- PdfPig 0.1.16: Apache-2.0, Eliot Jones and contributors, https://github.com/UglyToad/PdfPig.
+- Cupertino Files Pages interoperability: MIT with its BSD/LZFSE and PicoDocs notices, shared with macOS; see licenses/cupertino-files.
+Optional runtimes are downloaded directly from upstream after choosing setup, with pinned SHA-256 checks. LibreOffice 26.8.1 (MPL-2.0 and upstream notices) is extracted from https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi. ExifTool 13.59 / Strawberry Perl retain their Artistic/GPL and included upstream notices from https://sourceforge.net/projects/exiftool/files/exiftool-13.59_64.zip/. Their full license files remain in the user tools directories. HEIC exports use the already disclosed FFmpeg/libx265 runtime; no external server receives image content.

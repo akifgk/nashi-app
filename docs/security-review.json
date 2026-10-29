@@ -1,0 +1,54 @@
+{
+  "reviewDate": "2026-10-19",
+  "reviewedRelease": "0.7.1 (31)",
+  "publicRepository": "orkunisitmak/nashi-app",
+  "originalRepositoryVisibility": "private",
+  "scope": "Fresh public source history, release contents, update trust chain, file/process boundaries and dependency licenses; not a guarantee that all vulnerabilities are absent.",
+  "publicSource": {
+    "freshHistory": true,
+    "privateHistoryIncluded": false,
+    "trackedFiles": 224,
+    "secretScanner": "gitleaks 8.30.1 (pinned official archive and SHA-256)",
+    "secretFindings": 0,
+    "sourcePolicy": "Passed"
+  },
+  "excluded": [
+    "Credentials and environment files",
+    "Signing private keys and certificates",
+    "Private credential broker",
+    "Personal home paths and builder identity",
+    "Reference binaries and screenshots",
+    "Browser cookies/profiles",
+    "Raw private QA files"
+  ],
+  "verification": {
+    "macUpdaterTests": 45,
+    "macDocumentEngineTests": 26,
+    "macHtmlAndArchiveBoundaryTests": 2,
+    "windowsEngineChecks": 66,
+    "windowsNativeImagePdfZipAndWpfChecks": 38,
+    "macReleaseBundleFilesAudited": 1371,
+    "actualMacUpdateChain": "0.6.5 → 0.7.0 → 0.7.1 through in-app Install Update / Relaunch; 50 history records and automatic checks preserved; no new credentials",
+    "windowsNativeScope": "Windows runner with rendered WPF controls and real exports; no physical global Explorer gesture claimed",
+    "actualWindowsUpdateChain": "0.7.0.0 → 0.7.1.0: anonymous public download, pinned archive signature, real portable replacement, new native window, graceful close and 38 updated-app native checks"
+  },
+  "updateTrust": {
+    "repository": "orkunisitmak/nashi-app",
+    "requiresGitHubToken": false,
+    "mac": "Pinned Ed25519 verification of feed and archive through Sparkle",
+    "windows": "Pinned Ed25519 archive verification, canonical repository/size/version checks, safe extraction and recoverable previous app folder"
+  },
+  "dependencyDelivery": "Large media and Office runtimes are acquired directly from upstream with pinned hashes; included libraries/source retain license notices. Windows PDFsharp is MIT 6.2.4; vulnerable transitive package overridden by patched 10.0.13.",
+  "knownLimits": [
+    "No Apple notarization/Developer ID or Windows Authenticode signing in these initial builds.",
+    "Windows x64 is a native preview with fewer tools than macOS.",
+    "Complex media/document parsers and external upstream dependencies remain attack surfaces.",
+    "Public URL downloads depend on the remote site and do not import browser cookies."
+  ],
+  "evidence": {
+    "windowsReleaseChecks": "https://github.com/orkunisitmak/nashi-app/actions/runs/39253856012",
+    "macSourceAndUpdaterChecks": "https://github.com/orkunisitmak/nashi-app/actions/runs/39253856070",
+    "release": "https://github.com/orkunisitmak/nashi-app/releases/tag/v0.7.1-31",
+    "windowsPublicInstallerAndRestart": "https://github.com/orkunisitmak/nashi-app/actions/runs/39255267275"
+  }
+}

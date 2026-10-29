@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>FeedURL</key>
+	<string>https://github.com/orkunisitmak/nashi-app/releases/latest/download/appcast.xml</string>
+	<key>PublicEDKey</key>
+	<string>VPJpPpgXKda4c3ZOvP4zH8koa3ht1jm6lJWNBr+2saU=</string>
+	<key>PublicRepository</key>
+	<string>orkunisitmak/nashi-app</string>
+</dict>
+</plist>

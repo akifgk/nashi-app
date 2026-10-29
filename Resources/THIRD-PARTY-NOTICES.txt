@@ -1,0 +1,66 @@
+Nashi for Mac. Independent implementation; not affiliated with LEAP STUDIO or its Tangerine product.
+
+FFmpeg 9.0 and ffprobe 9.0, Copyright FFmpeg contributors, GPL v2 or later.
+Public packages download the Apple Silicon tools directly from OSXExperts during setup: https://www.osxexperts.net/
+Build configuration is available with ffmpeg -version. Source repository:
+https://github.com/FFmpeg/FFmpeg ; build recipes https://www.osxexperts.net/
+ffmpeg SHA256 591260c945d0eef150e3bf82b0ef988bd36a9cecc18ff05d6679617159f0a95e
+ffprobe SHA256 e11c17e8200b3ee4c4c186d245e2b4053f01d56957336c1817fca0b997469106
+
+LibreOffice 26.8.1, The Document Foundation and contributors.
+MPL 2.0. This upstream runtime is downloaded separately; it is not in the public app archive.
+Public setup acquires LibreOffice 26.8.1 directly from The Document Foundation. Its complete license notices and third party notices remain inside LibreOffice.app.
+https://www.libreoffice.org/ ; https://www.libreoffice.org/about-us/licenses/
+
+cupertino-files 0.4.0, Copyright 2026 Ole Kristensen and contributors, MIT.
+Native Pages interoperability runs inside macOS JavaScriptCore.
+https://github.com/den-frie-vilje/cupertino-files
+LZVN decoder: Copyright 2015-2016 Apple Inc., BSD-3-Clause.
+Empty table donor derived from PicoMLX/PicoDocs, Copyright 2025 Pico MLX, MIT.
+Exact pinned sources, hashes, donor transformations and complete license texts:
+Resources/licenses/cupertino-files/ (licenses/cupertino-files/ in the app bundle).
+
+pdf-lib 1.17.1, Copyright (c) 2019 Andrew Dillon, MIT.
+PDF page editing runs locally inside macOS JavaScriptCore.
+https://github.com/Hopding/pdf-lib/tree/v1.17.1
+The pinned browser bundle and dependency notices are in PDFLib.js and
+licenses/pdf-lib.txt in the application bundle.
+
+Reference screenshots and product descriptions belong to their respective owners;
+they are analysis evidence and are not bundled into the recreated application.
+
+ExifTool 13.59, Copyright 2003-2026 Phil Harvey. Independently acquired from
+https://github.com/exiftool/exiftool at commit 2200871d9cef988051d2a99d67df3bda6cbb30a8.
+Distributed under the same terms as Perl (Artistic License or GPL); the public
+distribution's README and GPL license are included in Resources/licenses and in
+the bundled ExifTool directory. No reference-app-specific Perl bridge is used.
+Archive SHA256 e1e2ad6c6fbf568afee5993ef8b2b91ab013d21698c9304e079e633ad82776f5.
+
+Sparkle 2.10.0, Copyright Sparkle Project and contributors, MIT with third party
+BSD notices. https://sparkle-project.org/ ; https://github.com/sparkle-project/Sparkle
+The package is pinned in Package.resolved. The complete license is copied from
+the official package into licenses/Sparkle-LICENSE.txt in the application bundle.
+
+Tendedero personal fork credential broker
+Adapted credential XPC architecture, client and validation fixtures.
+Upstream copyright (c) 2026 Alejandro Buján. MIT License.
+See licenses/Tendedero-MIT.txt. No Tendedero name or icon artwork is included.
+
+Web downloads
+yt-dlp 2026.08.19, contributors: https://github.com/yt-dlp/yt-dlp/tree/2026.08.19
+The separately downloaded official yt-dlp_macos executable includes Python, yt-dlp-ejs and
+other dependencies. The standalone PyInstaller distribution is GPLv3+ in
+combination. Individual source and dependency licenses are reproduced in
+licenses/web-download/; corresponding official release/source references:
+https://github.com/yt-dlp/yt-dlp/releases/tag/2026.08.19
+https://github.com/yt-dlp/yt-dlp/archive/refs/tags/2026.08.19.tar.gz
+The pinned unmodified upstream asset SHA256 and reproducible acquisition are
+in scripts/setup-web-download-tools.py. Packaging only adds our code signature.
+
+Deno 2.9.7, Copyright Deno contributors, MIT and dependency licenses.
+https://github.com/denoland/deno/tree/v2.9.7
+https://github.com/denoland/deno/releases/tag/v2.9.7
+https://github.com/denoland/deno/archive/refs/tags/v2.9.7.tar.gz
+Runtime license, dependency notices and upstream source references:
+licenses/web-download/Deno-*.txt and V8-LICENSE.txt.
+No browser cookies or login credentials are imported by this feature.

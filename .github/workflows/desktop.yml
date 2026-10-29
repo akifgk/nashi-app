@@ -1,0 +1,50 @@
+name: Windows desktop verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.x'
+      - name: Audit and publish native app
+        shell: pwsh
+        run: |
+          dotnet restore windows/Nashi.Windows --locked-mode
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish windows/Nashi.Windows -c Release --no-restore -o build/windows/Nashi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project windows/Nashi.Verify -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Native keyboard clipboard Library crop trim and appearance
+        shell: pwsh
+        env:
+          NASHI_SMOKE_DIRECTORY: '${{ github.workspace }}\build\windows-smoke'
+        run: |
+          $start = [Diagnostics.ProcessStartInfo]::new((Resolve-Path build/windows/Nashi/Nashi.exe))
+          $start.UseShellExecute = $false
+          $start.ArgumentList.Add('--smoke-test')
+          $process = [Diagnostics.Process]::Start($start)
+          $handle = $process.Handle
+          if (!$process.WaitForExit(900000)) { $process.Kill($true); throw 'Native desktop test timed out' }
+          if ($process.ExitCode -ne 0) {
+            if (Test-Path build/windows-smoke/error.txt) { Get-Content build/windows-smoke/error.txt }
+            throw 'Native desktop test failed'
+          }
+          Get-Content build/windows-smoke/smoke.json
+          Compress-Archive -Path build/windows/Nashi/* -DestinationPath build/Nashi-Windows-x64.zip
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: windows-desktop-proof
+          path: |
+            build/Nashi-Windows-x64.zip
+            build/windows-smoke
+          retention-days: 7
