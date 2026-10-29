@@ -61,7 +61,7 @@ public sealed class GlobalDragController:IDisposable
     private void HideLegend(){legend?.Close();legend=null;legendKind=null;}
     private void ShowTip(NativePoint point)
     {
-        if(draggable is not {IsCompletedSuccessfully:true,Result:true})return;
+        if(!preferences.Value.DragHint||draggable is not {IsCompletedSuccessfully:true,Result:true})return;
         if(tip is null){tip=new DragHintWindow(preferences.Value);tip.Show();}
         tip.MoveTo(point.X,point.Y);
     }
@@ -72,7 +72,7 @@ public sealed class GlobalDragController:IDisposable
         if(!down){down=true;start=point;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;pressed.Clear();return;}
         var kind=KindFor();if(Math.Abs(point.X-start.X)+Math.Abs(point.Y-start.Y)<10)return;
         hint??=Task.Run(()=>LinkAt(start));var sourceHint=hint;draggable??=Task.Run(()=>LooksDraggable(start,sourceHint));
-        if(wheel is {Revealed:true}&&openedKind is not null&&legendKind!=openedKind){HideLegend();legend=new DragHintWindow(preferences.Value,openedKind);legend.Show();legend.PlaceBelow(new WindowInteropHelper(wheel).Handle);legendKind=openedKind;}
+        if(preferences.Value.DragHint&&wheel is {Revealed:true}&&openedKind is not null&&legendKind!=openedKind){HideLegend();legend=new DragHintWindow(preferences.Value,openedKind);legend.Show();legend.PlaceBelow(new WindowInteropHelper(wheel).Handle);legendKind=openedKind;}
         if(blocked)return;
         if(kind is null){if(!opened)ShowTip(point);return;}
         if(opened&&kind==openedKind)return;
@@ -94,6 +94,8 @@ public sealed class GlobalDragController:IDisposable
         try
         {
             var element=AutomationElement.FromPoint(new Point(point.X,point.Y));
+            // Nashi's own windows (photo editor area selection, sliders, lists) never carry a file the wheel could take.
+            if(element is not null&&element.Current.ProcessId==Environment.ProcessId)return false;
             for(var n=0;n<6&&element is not null;n++,element=TreeWalker.ControlViewWalker.GetParent(element))
             {
                 var type=element.Current.ControlType;
