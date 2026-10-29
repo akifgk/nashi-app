@@ -43,7 +43,7 @@ public sealed class GlobalDragController:IDisposable
     private static bool Held(int key)=>(GetAsyncKeyState(key)&0x8000)!=0;
     // Modifiers in the order they were pressed, so pressing Alt after Ctrl switches to the Alt function.
     private readonly List<string> pressed=[];
-    private string? openedKind;private NativePoint wheelPoint;private bool blocked;private DragHintWindow? tip;private Task<bool>? draggable;
+    private string? openedKind;private NativePoint wheelPoint;private bool blocked;private DragHintWindow? tip;private DragHintWindow? legend;private string? legendKind;private Task<bool>? draggable;
     private string? KindFor()
     {
         var current=new List<string>();if(Held(0x11))current.Add("Ctrl");if(Held(0x10))current.Add("Shift");if(Held(0x12))current.Add("Alt");
@@ -58,6 +58,7 @@ public sealed class GlobalDragController:IDisposable
         return null;
     }
     private void HideTip(){tip?.Close();tip=null;}
+    private void HideLegend(){legend?.Close();legend=null;legendKind=null;}
     private void ShowTip(NativePoint point)
     {
         if(draggable is not {IsCompletedSuccessfully:true,Result:true})return;
@@ -66,16 +67,17 @@ public sealed class GlobalDragController:IDisposable
     }
     private void Poll()
     {
-        UpdateShortcut();if(!preferences.Value.Enabled||!OwnerAvailable){HideTip();wheel?.Close();wheel=null;down=false;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;return;}var held=PrimaryMouseButton.IsPressed;GetCursorPos(out var point);
-        if(!held){if(down){down=false;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;HideTip();if(wheel is {IsVisible:true}){var old=wheel;var dismiss=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};dismiss.Tick+=(_,_)=>{dismiss.Stop();if(old.IsVisible)old.Close();};dismiss.Start();}wheel=null;}return;}
+        UpdateShortcut();if(!preferences.Value.Enabled||!OwnerAvailable){HideTip();HideLegend();wheel?.Close();wheel=null;down=false;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;return;}var held=PrimaryMouseButton.IsPressed;GetCursorPos(out var point);
+        if(!held){if(down){down=false;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;HideTip();HideLegend();if(wheel is {IsVisible:true}){var old=wheel;var dismiss=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};dismiss.Tick+=(_,_)=>{dismiss.Stop();if(old.IsVisible)old.Close();};dismiss.Start();}wheel=null;}return;}
         if(!down){down=true;start=point;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;pressed.Clear();return;}
         var kind=KindFor();if(Math.Abs(point.X-start.X)+Math.Abs(point.Y-start.Y)<10)return;
         hint??=Task.Run(()=>LinkAt(start));var sourceHint=hint;draggable??=Task.Run(()=>LooksDraggable(start,sourceHint));
+        if(wheel is {Revealed:true}&&openedKind is not null&&legendKind!=openedKind){HideLegend();legend=new DragHintWindow(preferences.Value,openedKind);legend.Show();legend.PlaceBelow(new WindowInteropHelper(wheel).Handle);legendKind=openedKind;}
         if(blocked)return;
         if(kind is null){if(!opened)ShowTip(point);return;}
         if(opened&&kind==openedKind)return;
         if(!opened){opened=true;if(InMoveSize()){blocked=true;HideTip();return;}wheelPoint=point;}
-        else{wheel?.Close();wheel=null;}
+        else{wheel?.Close();wheel=null;HideLegend();}
         HideTip();openedKind=kind;var p=preferences.Value;
         wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null),()=>sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,wheelPoint.X,wheelPoint.Y,WheelPresentation.Diameter*p.WheelScale);
     }
@@ -119,7 +121,7 @@ public sealed class GlobalDragController:IDisposable
             }
         }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}catch(System.Reflection.TargetInvocationException){}catch(MissingMethodException){}return null;
     }
-    public void Dispose(){timer.Stop();HideTip();wheel?.Close();if(handle!=IntPtr.Zero)UnregisterHotKey(handle,7701);source?.RemoveHook(Hook);}
+    public void Dispose(){timer.Stop();HideTip();HideLegend();wheel?.Close();if(handle!=IntPtr.Zero)UnregisterHotKey(handle,7701);source?.RemoveHook(Hook);}
 }
 
 internal sealed class GlobalDropWheel:Window
@@ -186,19 +188,33 @@ internal sealed class DragHintWindow:Window
     [DllImport("user32.dll")]private static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
     [DllImport("user32.dll",EntryPoint="GetWindowLongW")]private static extern int GetWindowLong(IntPtr window,int index);
     [DllImport("user32.dll",EntryPoint="SetWindowLongW")]private static extern int SetWindowLong(IntPtr window,int index,int value);
-    public DragHintWindow(Preferences preferences)
+    public DragHintWindow(Preferences preferences,string? current=null)
     {
         WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ShowInTaskbar=false;ShowActivated=false;Topmost=true;ResizeMode=ResizeMode.NoResize;SizeToContent=SizeToContent.WidthAndHeight;Focusable=false;IsHitTestVisible=false;Title="Nashi · hint";
-        var stack=new StackPanel();
+        var stack=new StackPanel{Orientation=current is null?Orientation.Vertical:Orientation.Horizontal};
         void Row(string keys,string title)
         {
             var chip=new Border{Background=Theme.Brush("Inset"),BorderBrush=Theme.Brush("Line"),BorderThickness=new(1),CornerRadius=new(5),Padding=new(7,1,7,2),Margin=new(0,0,10,0),MinWidth=54,Child=new TextBlock{Text=keys,FontSize=12,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink"),HorizontalAlignment=HorizontalAlignment.Center}};
-            var row=new StackPanel{Orientation=Orientation.Horizontal,Margin=new(0,2,0,2)};row.Children.Add(chip);row.Children.Add(L10n.Label(new TextBlock{Text=title,FontSize=13,Foreground=Theme.Brush("Ink"),VerticalAlignment=VerticalAlignment.Center}));stack.Children.Add(row);
+            var row=new StackPanel{Orientation=Orientation.Horizontal,Margin=current is null?new(0,2,0,2):new(8,0,8,0)};row.Children.Add(chip);row.Children.Add(L10n.Label(new TextBlock{Text=title,FontSize=13,Foreground=Theme.Brush("Ink"),VerticalAlignment=VerticalAlignment.Center}));stack.Children.Add(row);
         }
-        Row(preferences.ToolsModifier,"Tools");Row(preferences.ConvertModifier,"Convert");Row(preferences.ActionsModifier,"File actions");
-        Content=new Border{Background=Theme.Brush("Surface"),BorderBrush=Theme.Brush("Line"),BorderThickness=new(1),CornerRadius=new(10),Padding=new(10,6,12,6),Child=stack,Opacity=.96};
+        if(current!="tools")Row(preferences.ToolsModifier,"Tools");if(current!="convert")Row(preferences.ConvertModifier,"Convert");if(current!="actions")Row(preferences.ActionsModifier,"File actions");
+        Content=new Border{Background=Theme.Brush("Surface"),BorderBrush=Theme.Brush("Line"),BorderThickness=new(1),CornerRadius=new(current is null?10:16),Padding=current is null?new(10,6,12,6):new(8,6,8,6),Child=stack,Opacity=.96};
         // WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE: pointer events pass through, no focus, no taskbar entry.
         SourceInitialized+=(_,_)=>{var handle=new WindowInteropHelper(this).Handle;SetWindowLong(handle,-20,GetWindowLong(handle,-20)|0x20|0x80|0x08000000);};
+    }
+    [StructLayout(LayoutKind.Sequential)]private struct Rect{public int Left,Top,Right,Bottom;}
+    [StructLayout(LayoutKind.Sequential)]private struct MonitorInfo{public int Size;public Rect Monitor,Work;public uint Flags;}
+    [DllImport("user32.dll")]private static extern bool GetWindowRect(IntPtr window,out Rect rect);
+    [DllImport("user32.dll")]private static extern IntPtr MonitorFromWindow(IntPtr window,uint flags);
+    [DllImport("user32.dll")]private static extern bool GetMonitorInfo(IntPtr monitor,ref MonitorInfo info);
+    /// Centers the legend under the wheel; flips above it when the wheel sits at the bottom of the screen.
+    internal void PlaceBelow(IntPtr wheelHandle)
+    {
+        var handle=new WindowInteropHelper(this).Handle;if(handle==IntPtr.Zero||!GetWindowRect(wheelHandle,out var wheel)||!GetWindowRect(handle,out var own))return;
+        var width=own.Right-own.Left;var height=own.Bottom-own.Top;var gap=8;var x=(wheel.Left+wheel.Right-width)/2;var y=wheel.Bottom+gap;
+        var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};
+        if(GetMonitorInfo(MonitorFromWindow(wheelHandle,2),ref info)){x=Math.Clamp(x,info.Work.Left,Math.Max(info.Work.Left,info.Work.Right-width));if(y+height>info.Work.Bottom)y=wheel.Top-height-gap;}
+        SetWindowPos(handle,new IntPtr(-1),x,y,0,0,0x11);
     }
     internal void MoveTo(int x,int y){var handle=new WindowInteropHelper(this).Handle;if(handle!=IntPtr.Zero)SetWindowPos(handle,new IntPtr(-1),x+22,y+26,0,0,0x11);}
 }
