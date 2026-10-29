@@ -97,7 +97,9 @@ public sealed class GlobalDragController:IDisposable
             for(var n=0;n<6&&element is not null;n++,element=TreeWalker.ControlViewWalker.GetParent(element))
             {
                 var type=element.Current.ControlType;
-                if(element.Current.IsPassword||type==ControlType.Edit||type==ControlType.Document||type==ControlType.ScrollBar||type==ControlType.Slider||type==ControlType.TitleBar)return false;
+                if(element.Current.IsPassword||type==ControlType.ScrollBar||type==ControlType.Slider||type==ControlType.TitleBar)return false;
+                // Explorer puts an Edit ("UIProperty") inside every item label; keep climbing there to reach the item.
+                if(type==ControlType.Edit||type==ControlType.Document){if(InFileManager(element))continue;return false;}
                 // Images and links carry a URL anywhere. List/tree items carry files only in a file manager;
                 // in a web page or document they are plain text rows.
                 if(type==ControlType.Image||type==ControlType.Hyperlink)return true;
