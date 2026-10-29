@@ -111,6 +111,7 @@ public static class PhotoCodec
     /// Strong blur for redaction: works on a reduced copy so large sigmas stay fast and unrecognizable.
     public static byte[] BlurRegion(byte[] png,double sigma)
     {
+        if(!double.IsFinite(sigma)||sigma<=0)throw new ArgumentOutOfRangeException(nameof(sigma));
         using var image=new MagickImage(png,new MagickReadSettings{Format=MagickFormat.Png});var width=image.Width;var height=image.Height;
         var factor=Math.Max(1,sigma/4);var small=(uint)Math.Max(1,Math.Round(width/factor));var smallHeight=(uint)Math.Max(1,Math.Round(height/factor));
         image.Resize(small,smallHeight);image.GaussianBlur(0,Math.Max(1,sigma/factor));image.Resize(width,height);image.HasAlpha=false;return image.ToByteArray(MagickFormat.Png);
