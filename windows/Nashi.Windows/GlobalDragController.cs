@@ -41,14 +41,59 @@ public sealed class GlobalDragController:IDisposable
     private void UpdateShortcut(){if(handle==IntPtr.Zero)return;var enabled=preferences.Value.Enabled;if(shortcutEnabled==enabled)return;shortcutEnabled=enabled;if(LinkShortcutRegistered)UnregisterHotKey(handle,7701);LinkShortcutRegistered=enabled&&RegisterHotKey(handle,7701,0x4000|0x2|0x4,0x44);}
     private IntPtr Hook(IntPtr window,int message,IntPtr w,IntPtr l,ref bool handled){if(message==0x0312&&w.ToInt32()==7701){if(preferences.Value.Enabled&&OwnerAvailable)link();handled=true;}return IntPtr.Zero;}
     private static bool Held(int key)=>(GetAsyncKeyState(key)&0x8000)!=0;
-    private string Chord(){var parts=new List<string>();if(Held(0x11))parts.Add("Ctrl");if(Held(0x10))parts.Add("Shift");if(Held(0x12))parts.Add("Alt");return string.Join('+',parts);}
+    // Modifiers in the order they were pressed, so pressing Alt after Ctrl switches to the Alt function.
+    private readonly List<string> pressed=[];
+    private string? openedKind;private NativePoint wheelPoint;private bool blocked;private DragHintWindow? tip;private Task<bool>? draggable;
+    private string? KindFor()
+    {
+        var current=new List<string>();if(Held(0x11))current.Add("Ctrl");if(Held(0x10))current.Add("Shift");if(Held(0x12))current.Add("Alt");
+        pressed.RemoveAll(m=>!current.Contains(m));foreach(var m in current)if(!pressed.Contains(m))pressed.Add(m);
+        var p=preferences.Value;var kinds=new[]{("tools",p.ToolsModifier),("convert",p.ConvertModifier),("actions",p.ActionsModifier)};
+        for(var i=pressed.Count-1;i>=0;i--)
+        {
+            string? best=null;var size=0;
+            foreach(var (kind,combo) in kinds){var set=combo.Split('+');if(set.Contains(pressed[i])&&set.All(current.Contains)&&set.Length>size){best=kind;size=set.Length;}}
+            if(best is not null)return best;
+        }
+        return null;
+    }
+    private void HideTip(){tip?.Close();tip=null;}
+    private void ShowTip(NativePoint point)
+    {
+        if(draggable is not {IsCompletedSuccessfully:true,Result:true})return;
+        if(tip is null){tip=new DragHintWindow(preferences.Value);tip.Show();}
+        tip.MoveTo(point.X,point.Y);
+    }
     private void Poll()
     {
-        UpdateShortcut();if(!preferences.Value.Enabled||!OwnerAvailable){wheel?.Close();wheel=null;down=false;opened=false;hint=null;return;}var held=PrimaryMouseButton.IsPressed;GetCursorPos(out var point);
-        if(!held){if(down){down=false;opened=false;hint=null;if(wheel is {IsVisible:true}){var old=wheel;var dismiss=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};dismiss.Tick+=(_,_)=>{dismiss.Stop();if(old.IsVisible)old.Close();};dismiss.Start();}wheel=null;}return;}
-        if(!down){down=true;start=point;opened=false;hint=null;return;}if(opened||Math.Abs(point.X-start.X)+Math.Abs(point.Y-start.Y)<10)return;
-        hint??=Task.Run(()=>LinkAt(start));var chord=Chord();var p=preferences.Value;var kind=chord==p.ToolsModifier?"tools":chord==p.ConvertModifier?"convert":chord==p.ActionsModifier?"actions":null;if(kind is null)return;opened=true;if(InMoveSize())return;
-        var sourceHint=hint;wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null),()=>sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,point.X,point.Y,WheelPresentation.Diameter*p.WheelScale);
+        UpdateShortcut();if(!preferences.Value.Enabled||!OwnerAvailable){HideTip();wheel?.Close();wheel=null;down=false;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;return;}var held=PrimaryMouseButton.IsPressed;GetCursorPos(out var point);
+        if(!held){if(down){down=false;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;HideTip();if(wheel is {IsVisible:true}){var old=wheel;var dismiss=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};dismiss.Tick+=(_,_)=>{dismiss.Stop();if(old.IsVisible)old.Close();};dismiss.Start();}wheel=null;}return;}
+        if(!down){down=true;start=point;opened=false;openedKind=null;blocked=false;hint=null;draggable=null;pressed.Clear();return;}
+        var kind=KindFor();if(Math.Abs(point.X-start.X)+Math.Abs(point.Y-start.Y)<10)return;
+        hint??=Task.Run(()=>LinkAt(start));var sourceHint=hint;draggable??=Task.Run(()=>LooksDraggable(start,sourceHint));
+        if(blocked)return;
+        if(kind is null){if(!opened)ShowTip(point);return;}
+        if(opened&&kind==openedKind)return;
+        if(!opened){opened=true;if(InMoveSize()){blocked=true;HideTip();return;}wheelPoint=point;}
+        else{wheel?.Close();wheel=null;}
+        HideTip();openedKind=kind;var p=preferences.Value;
+        wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null),()=>sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,wheelPoint.X,wheelPoint.Y,WheelPresentation.Diameter*p.WheelScale);
+    }
+    /// True when the press landed on something that can carry files or a link (an Explorer item, an image, a link).
+    /// Text selections, edit boxes and scrollbars never show the key hint.
+    private static bool LooksDraggable(NativePoint point,Task<string?> link)
+    {
+        try
+        {
+            var element=AutomationElement.FromPoint(new Point(point.X,point.Y));
+            for(var n=0;n<6&&element is not null;n++,element=TreeWalker.ControlViewWalker.GetParent(element))
+            {
+                var type=element.Current.ControlType;
+                if(element.Current.IsPassword||type==ControlType.Edit||type==ControlType.Document||type==ControlType.ScrollBar||type==ControlType.Slider||type==ControlType.TitleBar)return false;
+                if(type==ControlType.ListItem||type==ControlType.DataItem||type==ControlType.TreeItem||type==ControlType.Image||type==ControlType.Hyperlink)return true;
+            }
+        }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}
+        try{return link.GetAwaiter().GetResult() is not null;}catch(Exception){return false;}
     }
     private static string? LinkAt(NativePoint point)
     {
@@ -65,7 +110,7 @@ public sealed class GlobalDragController:IDisposable
             }
         }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}catch(System.Reflection.TargetInvocationException){}catch(MissingMethodException){}return null;
     }
-    public void Dispose(){timer.Stop();wheel?.Close();if(handle!=IntPtr.Zero)UnregisterHotKey(handle,7701);source?.RemoveHook(Hook);}
+    public void Dispose(){timer.Stop();HideTip();wheel?.Close();if(handle!=IntPtr.Zero)UnregisterHotKey(handle,7701);source?.RemoveHook(Hook);}
 }
 
 internal sealed class GlobalDropWheel:Window
@@ -123,4 +168,28 @@ internal sealed class GlobalDropWheel:Window
         }
         centerSource=count==0?"Keep dragging\nDrop a file or link":mode=="convert"?"Convert":mode=="actions"?"File actions":"Tools";centerText=new TextBlock{Text=centerSource,TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=VerticalAlignment.Center,FontSize=22,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink")};var center=new Border{Width=180,Height=180,IsHitTestVisible=false,Visibility=Revealed?Visibility.Visible:Visibility.Hidden,Child=L10n.Label(centerText)};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);
     }
+}
+
+/// Small non-interactive key legend that follows the pointer after a drag starts. It never takes focus
+/// or mouse events, so the drag underneath is unaffected.
+internal sealed class DragHintWindow:Window
+{
+    [DllImport("user32.dll")]private static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
+    [DllImport("user32.dll",EntryPoint="GetWindowLongW")]private static extern int GetWindowLong(IntPtr window,int index);
+    [DllImport("user32.dll",EntryPoint="SetWindowLongW")]private static extern int SetWindowLong(IntPtr window,int index,int value);
+    public DragHintWindow(Preferences preferences)
+    {
+        WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ShowInTaskbar=false;ShowActivated=false;Topmost=true;ResizeMode=ResizeMode.NoResize;SizeToContent=SizeToContent.WidthAndHeight;Focusable=false;IsHitTestVisible=false;Title="Nashi · hint";
+        var stack=new StackPanel();
+        void Row(string keys,string title)
+        {
+            var chip=new Border{Background=Theme.Brush("Inset"),BorderBrush=Theme.Brush("Line"),BorderThickness=new(1),CornerRadius=new(5),Padding=new(7,1,7,2),Margin=new(0,0,10,0),MinWidth=54,Child=new TextBlock{Text=keys,FontSize=12,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink"),HorizontalAlignment=HorizontalAlignment.Center}};
+            var row=new StackPanel{Orientation=Orientation.Horizontal,Margin=new(0,2,0,2)};row.Children.Add(chip);row.Children.Add(L10n.Label(new TextBlock{Text=title,FontSize=13,Foreground=Theme.Brush("Ink"),VerticalAlignment=VerticalAlignment.Center}));stack.Children.Add(row);
+        }
+        Row(preferences.ToolsModifier,"Tools");Row(preferences.ConvertModifier,"Convert");Row(preferences.ActionsModifier,"File actions");
+        Content=new Border{Background=Theme.Brush("Surface"),BorderBrush=Theme.Brush("Line"),BorderThickness=new(1),CornerRadius=new(10),Padding=new(10,6,12,6),Child=stack,Opacity=.96};
+        // WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE: pointer events pass through, no focus, no taskbar entry.
+        SourceInitialized+=(_,_)=>{var handle=new WindowInteropHelper(this).Handle;SetWindowLong(handle,-20,GetWindowLong(handle,-20)|0x20|0x80|0x08000000);};
+    }
+    internal void MoveTo(int x,int y){var handle=new WindowInteropHelper(this).Handle;if(handle!=IntPtr.Zero)SetWindowPos(handle,new IntPtr(-1),x+22,y+26,0,0,0x11);}
 }
