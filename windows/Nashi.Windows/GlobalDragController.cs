@@ -79,8 +79,14 @@ public sealed class GlobalDragController:IDisposable
         HideTip();openedKind=kind;var p=preferences.Value;
         wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null),()=>sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,wheelPoint.X,wheelPoint.Y,WheelPresentation.Diameter*p.WheelScale);
     }
-    /// True when the press landed on something that can carry files or a link (an Explorer item, an image, a link).
+    /// True when the press landed on something that can carry files or a link (a file-manager item, an image, a link).
     /// Text selections, edit boxes and scrollbars never show the key hint.
+    private static readonly HashSet<string> FileManagers=new(StringComparer.OrdinalIgnoreCase){"explorer","Files","7zFM","TOTALCMD64","TOTALCMD","DOpus","XYplorer","OneCommander","Q-Dir","FreeCommander","doublecmd","Nashi"};
+    private static bool InFileManager(AutomationElement element)
+    {
+        try{using var process=System.Diagnostics.Process.GetProcessById(element.Current.ProcessId);return FileManagers.Contains(process.ProcessName);}
+        catch(Exception error)when(error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception){return false;}
+    }
     private static bool LooksDraggable(NativePoint point,Task<string?> link)
     {
         try
@@ -90,7 +96,10 @@ public sealed class GlobalDragController:IDisposable
             {
                 var type=element.Current.ControlType;
                 if(element.Current.IsPassword||type==ControlType.Edit||type==ControlType.Document||type==ControlType.ScrollBar||type==ControlType.Slider||type==ControlType.TitleBar)return false;
-                if(type==ControlType.ListItem||type==ControlType.DataItem||type==ControlType.TreeItem||type==ControlType.Image||type==ControlType.Hyperlink)return true;
+                // Images and links carry a URL anywhere. List/tree items carry files only in a file manager;
+                // in a web page or document they are plain text rows.
+                if(type==ControlType.Image||type==ControlType.Hyperlink)return true;
+                if((type==ControlType.ListItem||type==ControlType.DataItem||type==ControlType.TreeItem)&&InFileManager(element))return true;
             }
         }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}
         try{return link.GetAwaiter().GetResult() is not null;}catch(Exception){return false;}
