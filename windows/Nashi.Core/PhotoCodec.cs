@@ -68,26 +68,48 @@ public static class PhotoCodec
         if(o.Gamma!=1)image.GammaCorrect(o.Gamma,Channels.RGB);
         if(o.Shadows!=0||o.Highlights!=0||o.Whites!=0||o.Blacks!=0||o.Saturation!=1||o.Vibrance!=0||o.Temperature!=0||o.Tint!=0||o.Fade!=0)
         {
-        var pixels=image.GetPixels();
-        for(var y=0;y<image.Height;y++)for(var x=0;x<image.Width;x++)
+        var pixels=image.GetPixels();var data=pixels.GetValues()??throw new InvalidDataException("Image pixels could not be read.");var channels=(int)image.ChannelCount;
+        for(var offset=0;offset+2<data.Length;offset+=channels)
         {
-            var p=pixels.GetPixel(x,y);var r=p.GetChannel(0)/255d;var g=p.GetChannel(1)/255d;var b=p.GetChannel(2)/255d;var lum=.2126*r+.7152*g+.0722*b;
+            var r=data[offset]/255d;var g=data[offset+1]/255d;var b=data[offset+2]/255d;var lum=.2126*r+.7152*g+.0722*b;
             var tone=o.Shadows*Math.Pow(1-lum,2)*.3+o.Highlights*lum*lum*.3+o.Whites*Math.Pow(lum,4)*.3+o.Blacks*Math.Pow(1-lum,4)*.3;
             var saturation=o.Saturation+o.Vibrance*(1-(Math.Max(r,Math.Max(g,b))-Math.Min(r,Math.Min(g,b))));
             r=lum+(r-lum)*saturation+tone+o.Temperature*.12+o.Tint*.06;g=lum+(g-lum)*saturation+tone-o.Tint*.1;b=lum+(b-lum)*saturation+tone-o.Temperature*.12+o.Tint*.06;
             var fade=Math.Clamp(o.Fade,0,1)*.3;r=r*(1-fade)+fade;g=g*(1-fade)+fade;b=b*(1-fade)+fade;
-            p.SetChannel(0,(byte)Math.Clamp(Math.Round(r*255),0,255));p.SetChannel(1,(byte)Math.Clamp(Math.Round(g*255),0,255));p.SetChannel(2,(byte)Math.Clamp(Math.Round(b*255),0,255));
+            data[offset]=(byte)Math.Clamp(Math.Round(r*255),0,255);data[offset+1]=(byte)Math.Clamp(Math.Round(g*255),0,255);data[offset+2]=(byte)Math.Clamp(Math.Round(b*255),0,255);
         }
-        pixels.Dispose();
+        pixels.SetPixels(data);pixels.Dispose();
         }
         if(o.Hue!=0)image.Modulate(new Percentage(100),new Percentage(100),new Percentage(100+o.Hue/1.8));
         if(o.Dehaze!=0)image.BrightnessContrast(new Percentage(-o.Dehaze*8),new Percentage(o.Dehaze*25));
         if(o.NoiseReduction>0)image.MedianFilter((uint)Math.Clamp(Math.Ceiling(o.NoiseReduction*2),1,3));
-        if(o.Blur>0)image.GaussianBlur(Math.Min(50,o.Blur));
+        if(o.Blur>0)image.GaussianBlur(0,Math.Min(50,o.Blur));
         if(o.Sharpen>0||o.Clarity>0||o.Texture>0)image.UnsharpMask(0,1+Math.Max(0,o.Clarity)*3,Math.Max(0,o.Sharpen)+Math.Max(0,o.Texture),.02);
         if(o.Grain>0)image.AddNoise(NoiseType.Gaussian,Math.Min(1,o.Grain)*.15,Channels.RGB);
         if(o.Vignette>0)image.Vignette(0,Math.Max(1,Math.Min(image.Width,image.Height)*o.Vignette*.25),0,0);
         return image.ToByteArray(MagickFormat.Png);
+    }
+    /// Lossless PNG with maximum zlib effort, adaptive filtering and no unused alpha channel
+    /// (WPF's encoder writes unfiltered 32-bit PNGs that are several times larger).
+    public static void OptimizePng(byte[] png,string output)
+    {
+        using var image=new MagickImage(png,new MagickReadSettings{Format=MagickFormat.Png});
+        if(image.HasAlpha&&image.IsOpaque)image.HasAlpha=false;
+        image.Strip();image.Quality=95;image.Write(output,MagickFormat.Png);
+    }
+    public static void OptimizePngPixels(byte[] bgra,int width,int height,string output)
+    {
+        if(width<1||height<1||bgra.Length<(long)width*height*4)throw new ArgumentException("Choose a nonempty image.");
+        using var image=new MagickImage();image.ReadPixels(bgra,new PixelReadSettings((uint)width,(uint)height,StorageType.Char,PixelMapping.BGRA));image.ColorSpace=ColorSpace.sRGB;
+        if(image.HasAlpha&&image.IsOpaque)image.HasAlpha=false;
+        image.Strip();image.Quality=95;image.Write(output,MagickFormat.Png);
+    }
+    /// Strong blur for redaction: works on a reduced copy so large sigmas stay fast and unrecognizable.
+    public static byte[] BlurRegion(byte[] png,double sigma)
+    {
+        using var image=new MagickImage(png,new MagickReadSettings{Format=MagickFormat.Png});var width=image.Width;var height=image.Height;
+        var factor=Math.Max(1,sigma/4);var small=(uint)Math.Max(1,Math.Round(width/factor));var smallHeight=(uint)Math.Max(1,Math.Round(height/factor));
+        image.Resize(small,smallHeight);image.GaussianBlur(0,Math.Max(1,sigma/factor));image.Resize(width,height);image.HasAlpha=false;return image.ToByteArray(MagickFormat.Png);
     }
     public static IReadOnlyDictionary<string,string> Metadata(string input)
     {
