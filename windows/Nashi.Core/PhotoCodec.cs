@@ -69,13 +69,15 @@ public static class PhotoCodec
         if(o.Shadows!=0||o.Highlights!=0||o.Whites!=0||o.Blacks!=0||o.Saturation!=1||o.Vibrance!=0||o.Temperature!=0||o.Tint!=0||o.Fade!=0)
         {
         var pixels=image.GetPixels();var data=pixels.GetValues()??throw new InvalidDataException("Image pixels could not be read.");var channels=(int)image.ChannelCount;
-        for(var offset=0;offset+2<data.Length;offset+=channels)
+        var grey=channels<3;   // grey (and grey+alpha) pixels hold one colour value, not R, G and B side by side
+        for(var offset=0;offset+(grey?0:2)<data.Length;offset+=channels)
         {
-            var r=data[offset]/255d;var g=data[offset+1]/255d;var b=data[offset+2]/255d;var lum=.2126*r+.7152*g+.0722*b;
+            var r=data[offset]/255d;var g=grey?r:data[offset+1]/255d;var b=grey?r:data[offset+2]/255d;var lum=.2126*r+.7152*g+.0722*b;
             var tone=o.Shadows*Math.Pow(1-lum,2)*.3+o.Highlights*lum*lum*.3+o.Whites*Math.Pow(lum,4)*.3+o.Blacks*Math.Pow(1-lum,4)*.3;
             var saturation=o.Saturation+o.Vibrance*(1-(Math.Max(r,Math.Max(g,b))-Math.Min(r,Math.Min(g,b))));
             r=lum+(r-lum)*saturation+tone+o.Temperature*.12+o.Tint*.06;g=lum+(g-lum)*saturation+tone-o.Tint*.1;b=lum+(b-lum)*saturation+tone-o.Temperature*.12+o.Tint*.06;
             var fade=Math.Clamp(o.Fade,0,1)*.3;r=r*(1-fade)+fade;g=g*(1-fade)+fade;b=b*(1-fade)+fade;
+            if(grey){data[offset]=(byte)Math.Clamp(Math.Round((.2126*r+.7152*g+.0722*b)*255),0,255);continue;}
             data[offset]=(byte)Math.Clamp(Math.Round(r*255),0,255);data[offset+1]=(byte)Math.Clamp(Math.Round(g*255),0,255);data[offset+2]=(byte)Math.Clamp(Math.Round(b*255),0,255);
         }
         pixels.SetPixels(data);pixels.Dispose();

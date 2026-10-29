@@ -175,7 +175,7 @@ public sealed partial class ToolEditor:Window
         var committed=false;
         try
         {
-            if(tool=="redactImage"&&activeRectangle is {Width:>=1,Height:>=1} r){photoRegions.Add(new Rect(Canvas.GetLeft(r),Canvas.GetTop(r),r.Width,r.Height));committed=true;activeRectangle=null;r.Fill=RedactFillFor(r);}
+            if(tool=="redactImage"&&activeRectangle is {Width:>=1,Height:>=1} r){photoRegions.Add(new Rect(Canvas.GetLeft(r),Canvas.GetTop(r),r.Width,r.Height));committed=true;activeRectangle=null;ApplyRedactFill(r);}
             if(tool=="redactVideo"&&activeRectangle is {Width:>=2,Height:>=2} v){var (start,end)=ReadPlaybackRange();videoRegions.Add(new(Canvas.GetLeft(v),Canvas.GetTop(v),v.Width,v.Height,start,end));committed=true;ReloadRanges();}
         }
         catch(ArgumentException error){time.Text=error.Message;}

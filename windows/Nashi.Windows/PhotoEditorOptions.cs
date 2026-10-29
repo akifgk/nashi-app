@@ -11,21 +11,23 @@ public sealed partial class ToolEditor
 {
     // The editor shows how the chosen cover will look instead of always painting black.
     // A finished blur cover shows the real blurred pixels, computed exactly as the export does.
-    private Brush RedactFillFor(Rectangle area)
+    // The frosted placeholder shows at once; the real blur is computed off the UI thread and applied only if
+    // the area and the chosen style are still the same when it is ready.
+    private void ApplyRedactFill(Rectangle area)
     {
-        if(redactionStyle.SelectedItem as string=="blur"&&bitmap is not null&&!ReferenceEquals(area,activeRectangle)&&area.Width>=1&&area.Height>=1)
+        area.Fill=RedactFill();area.Tag=null;
+        if(redactionStyle.SelectedItem as string!="blur"||bitmap is not {IsFrozen:true} source||ReferenceEquals(area,activeRectangle)||area.Width<1||area.Height<1)return;
+        var x=(int)Math.Clamp(Canvas.GetLeft(area),0,source.PixelWidth-1);var y=(int)Math.Clamp(Canvas.GetTop(area),0,source.PixelHeight-1);
+        var w=(int)Math.Clamp(area.Width,1,source.PixelWidth-x);var h=(int)Math.Clamp(area.Height,1,source.PixelHeight-y);var request=area.Tag=new object();
+        Task.Run(()=>
         {
             try
             {
-                var x=(int)Math.Clamp(Canvas.GetLeft(area),0,bitmap.PixelWidth-1);var y=(int)Math.Clamp(Canvas.GetTop(area),0,bitmap.PixelHeight-1);
-                var w=(int)Math.Clamp(area.Width,1,bitmap.PixelWidth-x);var h=(int)Math.Clamp(area.Height,1,bitmap.PixelHeight-y);
-                var crop=new CroppedBitmap(bitmap,new Int32Rect(x,y,w,h));
-                var brush=new ImageBrush(ImageEngine.FromPng(Nashi.Core.PhotoCodec.BlurRegion(ImageEngine.PngBytes(crop),Math.Max(14,Math.Min(w,h)/5))))
-                {Stretch=Stretch.Fill};brush.Freeze();return brush;
+                var crop=new CroppedBitmap(source,new Int32Rect(x,y,w,h));
+                var brush=new ImageBrush(ImageEngine.FromPng(Nashi.Core.PhotoCodec.BlurRegion(ImageEngine.PngBytes(crop),Math.Max(14,Math.Min(w,h)/5)))){Stretch=Stretch.Fill};brush.Freeze();return (Brush?)brush;
             }
-            catch(Exception error)when(error is ArgumentException or InvalidOperationException or IOException or NotSupportedException){}
-        }
-        return RedactFill();
+            catch(Exception error)when(error is ArgumentException or InvalidOperationException or IOException or NotSupportedException){return null;}
+        }).ContinueWith(task=>{if(task.IsCompletedSuccessfully&&task.Result is {} brush&&ReferenceEquals(area.Tag,request)&&redactionStyle.SelectedItem as string=="blur")area.Fill=brush;},TaskScheduler.FromCurrentSynchronizationContext());
     }
     private Brush RedactFill()
     {
@@ -71,7 +73,7 @@ public sealed partial class ToolEditor
         }
         if(tool=="redactImage")
         {
-            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);redactionStyle.SelectionChanged+=(_,_)=>{foreach(var area in drawing.Children.OfType<Rectangle>())area.Fill=RedactFillFor(area);};
+            options.Children.Add(L10n.Label(new TextBlock{Text="Cover style"}));options.Children.Add(redactionStyle);redactionStyle.SelectionChanged+=(_,_)=>{foreach(var area in drawing.Children.OfType<Rectangle>())ApplyRedactFill(area);};
             options.Children.Add(MainWindow.Button("Detect text",async()=>await DetectPhoto(true,false)));options.Children.Add(MainWindow.Button("Detect faces",async()=>await DetectPhoto(false,true)));
             options.Children.Add(MainWindow.Button("Undo area",()=>{if(photoRegions.Count==0)return;photoRegions.RemoveAt(photoRegions.Count-1);if(drawing.Children.Count>1)drawing.Children.RemoveAt(drawing.Children.Count-1);}));
         }
@@ -133,7 +135,7 @@ public sealed partial class ToolEditor
     private void SetPhotoPreview(BitmapSource result){drawing.Width=result.PixelWidth;drawing.Height=result.PixelHeight;if(drawing.Children[0] is Image image){image.Source=result;image.Width=result.PixelWidth;image.Height=result.PixelHeight;}}
     private async Task DetectPhoto(bool text,bool faces)
     {
-        if(bitmap is null)return;try{var regions=await NativePdf.DetectAsync(bitmap,text,faces);foreach(var r in regions){photoRegions.Add(r);var shape=new Rectangle{Width=r.Width,Height=r.Height,Fill=RedactFill(),Stroke=Brushes.Gold,StrokeThickness=2,IsHitTestVisible=false};Canvas.SetLeft(shape,r.X);Canvas.SetTop(shape,r.Y);drawing.Children.Add(shape);}if(regions.Length==0)MessageBox.Show(this,L10n.Text("No matching regions were detected. You can still draw areas by hand."),L10n.Text("Redact Photo"));}catch(Exception error){MessageBox.Show(this,L10n.Text(error.Message),L10n.Text("Detection unavailable"));}
+        if(bitmap is null)return;try{var regions=await NativePdf.DetectAsync(bitmap,text,faces);foreach(var r in regions){photoRegions.Add(r);var shape=new Rectangle{Width=r.Width,Height=r.Height,Fill=RedactFill(),Stroke=Brushes.Gold,StrokeThickness=2,IsHitTestVisible=false};Canvas.SetLeft(shape,r.X);Canvas.SetTop(shape,r.Y);drawing.Children.Add(shape);ApplyRedactFill(shape);}if(regions.Length==0)MessageBox.Show(this,L10n.Text("No matching regions were detected. You can still draw areas by hand."),L10n.Text("Redact Photo"));}catch(Exception error){MessageBox.Show(this,L10n.Text(error.Message),L10n.Text("Detection unavailable"));}
     }
     private void AnnotationStart()
     {
