@@ -15,6 +15,18 @@ public sealed partial class WebDownload(Toolchain tools)
         if(b.Length==4)return b[0]==10||b[0]==127||(b[0]==172&&b[1] is >=16 and <=31)||(b[0]==192&&b[1]==168)||(b[0]==169&&b[1]==254)||(b[0]==100&&b[1] is >=64 and <=127);
         return address.IsIPv6LinkLocal||address.IsIPv6SiteLocal||(b[0]&0xFE)==0xFC;
     }
+    /// Handler for requests Nashi makes itself. A name that resolves to this computer or a private network is refused
+    /// when the connection is made, so DNS tricks and redirects cannot reach it. Behind a proxy the proxy resolves the
+    /// name, so the connection to the proxy itself is left alone. Media fetched by yt-dlp is not covered.
+    internal static SocketsHttpHandler PublicOnlyHandler()=>new(){AllowAutoRedirect=false,ConnectTimeout=TimeSpan.FromSeconds(30),ConnectCallback=async(context,token)=>
+    {
+        var host=context.DnsEndPoint.Host;var viaProxy=context.InitialRequestMessage?.RequestUri is {} target&&!string.Equals(target.DnsSafeHost,host,StringComparison.OrdinalIgnoreCase);
+        var addresses=System.Net.IPAddress.TryParse(host,out var literal)?new[]{literal}:await System.Net.Dns.GetHostAddressesAsync(host,token);
+        if(addresses.Length==0||(!viaProxy&&addresses.Any(IsPrivate)))throw new HttpRequestException("That link points to this computer or a private network.");
+        var socket=new System.Net.Sockets.Socket(System.Net.Sockets.SocketType.Stream,System.Net.Sockets.ProtocolType.Tcp){NoDelay=true};
+        try{await socket.ConnectAsync(addresses,context.DnsEndPoint.Port,token);return new System.Net.Sockets.NetworkStream(socket,true);}
+        catch{socket.Dispose();throw;}
+    }};
     public async Task<IReadOnlyList<string>> DownloadAsync(string input,string kind,string destination,IProgress<OperationProgress>? progress=null,CancellationToken token=default,int? maximumHeight=null,IReadOnlySet<int>? selectedPhotos=null)
     {
         if(maximumHeight is <2 or >16384)throw new ArgumentException("Choose a supported maximum video height.");
