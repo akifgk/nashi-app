@@ -4,7 +4,16 @@ public sealed partial class WebDownload(Toolchain tools)
 {
     public static Uri Validate(string input)
     {
-        if(!Uri.TryCreate(input,UriKind.Absolute,out var url)||url.Scheme is not ("http" or "https")||!string.IsNullOrEmpty(url.UserInfo)||url.IsLoopback||url.Host.EndsWith(".local",StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Paste a public http(s) media or page link.");return url;
+        if(!Uri.TryCreate(input,UriKind.Absolute,out var url)||url.Scheme is not ("http" or "https")||!string.IsNullOrEmpty(url.UserInfo)||url.IsLoopback||url.Host.EndsWith(".local",StringComparison.OrdinalIgnoreCase)||url.Host.Equals("localhost",StringComparison.OrdinalIgnoreCase)||url.Host.EndsWith(".localhost",StringComparison.OrdinalIgnoreCase)||(System.Net.IPAddress.TryParse(url.Host.Trim('[',']'),out var address)&&IsPrivate(address)))throw new ArgumentException("Paste a public http(s) media or page link.");return url;
+    }
+    // Literal private, link-local and carrier-grade NAT addresses never name a public media server.
+    private static bool IsPrivate(System.Net.IPAddress address)
+    {
+        if(address.IsIPv4MappedToIPv6)address=address.MapToIPv4();
+        if(System.Net.IPAddress.IsLoopback(address)||address.Equals(System.Net.IPAddress.Any)||address.Equals(System.Net.IPAddress.IPv6Any))return true;
+        var b=address.GetAddressBytes();
+        if(b.Length==4)return b[0]==10||b[0]==127||(b[0]==172&&b[1] is >=16 and <=31)||(b[0]==192&&b[1]==168)||(b[0]==169&&b[1]==254)||(b[0]==100&&b[1] is >=64 and <=127);
+        return address.IsIPv6LinkLocal||address.IsIPv6SiteLocal||(b[0]&0xFE)==0xFC;
     }
     public async Task<IReadOnlyList<string>> DownloadAsync(string input,string kind,string destination,IProgress<OperationProgress>? progress=null,CancellationToken token=default,int? maximumHeight=null,IReadOnlySet<int>? selectedPhotos=null)
     {
