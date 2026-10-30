@@ -57,15 +57,23 @@ public sealed partial class ToolEditor
     }
     /// The name typed for the combined PDF, or null for the default.
     internal string? OutputName=>string.IsNullOrWhiteSpace(outputName.Text)?null:outputName.Text;
+    // At most two full-size decodes run for thumbnails at once, so a large selection cannot pile up memory.
+    private static readonly SemaphoreSlim thumbnailGate=new(2,2);
     private static async Task FillThumbnailAsync(System.Windows.Controls.Image picture,string path)
     {
         try
         {
-            var small=await Task.Run(()=>
+            await thumbnailGate.WaitAsync();
+            System.Windows.Media.Imaging.BitmapSource small;
+            try
             {
-                var full=ImageEngine.Load(path);var scale=Math.Min(1d,72d/Math.Max(full.PixelWidth,full.PixelHeight));
-                var scaled=new System.Windows.Media.Imaging.TransformedBitmap(full,new System.Windows.Media.ScaleTransform(scale,scale));scaled.Freeze();return scaled;
-            });
+                small=await Task.Run(()=>
+                {
+                    var full=ImageEngine.Load(path);var scale=Math.Min(1d,72d/Math.Max(full.PixelWidth,full.PixelHeight));
+                    var scaled=new System.Windows.Media.Imaging.TransformedBitmap(full,new System.Windows.Media.ScaleTransform(scale,scale));scaled.Freeze();return scaled;
+                });
+            }
+            finally{thumbnailGate.Release();}
             picture.Source=small;
         }
         catch(Exception error)when(error is NotSupportedException or IOException or InvalidOperationException or UnauthorizedAccessException or FileFormatException or InvalidDataException or OutOfMemoryException){}
