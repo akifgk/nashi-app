@@ -1130,5 +1130,10 @@
   "Original image · ready to download": "Image originale · prête à télécharger",
   "YouTube thumbnail · best available full-size image": "Miniature YouTube · meilleure image en taille réelle disponible",
   "Show key hint while dragging": "Afficher l’indication des touches pendant le glissement",
-  "Drag over each area to cover, then pick how it is hidden.": "Faites glisser sur chaque zone à couvrir, puis choisissez comment elle est masquée."
+  "Drag over each area to cover, then pick how it is hidden.": "Faites glisser sur chaque zone à couvrir, puis choisissez comment elle est masquée.",
+  "Previous image": "Image précédente",
+  "Next image": "Image suivante",
+  "Page {0} of {1}": "Page {0} sur {1}",
+  "File name": "Nom du fichier",
+  "Without .pdf. Leave empty for the default name.": "Sans .pdf. Laissez vide pour le nom par défaut."
 }
