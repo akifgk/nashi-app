@@ -147,8 +147,8 @@ internal sealed class GlobalDropWheel:Window
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=WheelPresentation.Diameter*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Opacity=HiddenOpacity;
         // Reveal only once the payload offers choices. On entry the pointer sits in the center,
         // so e.Effects is still None even for a valid file drag.
-        DragEnter+=(_,e)=>{entered++;Track(e);if(choices.Count>0)Reveal();};
-        DragOver+=(_,e)=>{over++;Track(e);if(choices.Count>0)Reveal();};
+        DragEnter+=(_,e)=>{entered++;Track(e);if(choices.Count>0||noTools)Reveal();};
+        DragOver+=(_,e)=>{over++;Track(e);if(choices.Count>0||noTools)Reveal();};
         Drop+=(_,e)=>{dropCount++;Track(e);var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
     }
     /// Switches Tools/Convert/File actions while a drag is over the wheel; the next DragOver rebuilds the segments.
@@ -159,7 +159,9 @@ internal sealed class GlobalDropWheel:Window
         // Replacing the hit-test target during DragEnter causes OLE to enter
         // again instead of advancing to DragOver. Keep the visual tree stable
         // until the payload actually changes, and select on entry as well.
-        if(!updated.SequenceEqual(choices)){choices=updated;Build(choices);}
+        // A file this mode has no tool for (an .ico, for example) still shows the wheel, with a message, so it does not look broken.
+        var unsupported=files.Length>0&&updated.Count==0;
+        if(!updated.SequenceEqual(choices)||unsupported!=noTools){choices=updated;noTools=unsupported;Build(choices);}
         var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;
         if(distance<108||distance>250||choices.Count==0){selection="";Highlight(-1);}
         else{var angle=(Math.Atan2(p.Y-270,p.X-270)*180/Math.PI-WheelPresentation.StartAngle(choices.Count)+360+180d/choices.Count)%360;var index=(int)(angle/(360d/choices.Count));var id=choices[index].Id;if(id!=selection){selection=id;Feedback.Play();}Highlight(index);}
@@ -176,7 +178,7 @@ internal sealed class GlobalDropWheel:Window
         }
         if(web is null)return [];return web.Kind switch{"youtube"=>[new("download:video","Download Video","↓"),new("download:thumbnail","Download Thumbnail","▣"),new("download:audio","Download Audio","♫")],"instagramPhotos"=>[new("download:photos","Download Images","▣")],"instagramReel"=>[new("download:video","Download Video","↓"),new("download:audio","Download Audio","♫")],"image"=>[new("download:image","Download Image","↓")],_=>[new("download:video","Download Video","↓"),new("download:audio","Download Audio","♫") ]};
     }
-    private TextBlock? centerText;private string centerSource="";
+    private TextBlock? centerText;private string centerSource="";private bool noTools;
     private void Highlight(int index){if(centerText is not null){if(index>=0&&index<choices.Count){System.Windows.Data.BindingOperations.ClearBinding(centerText,TextBlock.TextProperty);centerText.Text=L10n.Text(choices[index].Title);}else L10n.SetText(centerText,centerSource);}var paths=canvas.Children.OfType<System.Windows.Shapes.Path>().ToArray();for(var n=0;n<paths.Length;n++){paths[n].Fill=Theme.Brush(n==index?"Sage":"Inset");paths[n].Stroke=Theme.Brush(n==index?"Gold":"Line");}}
     private void Build(IReadOnlyList<ToolChoice> tools)
     {
@@ -186,7 +188,7 @@ internal sealed class GlobalDropWheel:Window
             var angle=(WheelPresentation.StartAngle(count)+360d*i/count)*Math.PI/180;var half=(180d/count-1)*Math.PI/180;Point P(double r,double a)=>new(270+r*Math.Cos(a),270+r*Math.Sin(a));var a=angle-half;var b=angle+half;var geometry=new StreamGeometry();using(var g=geometry.Open()){g.BeginFigure(P(108,a),true,true);g.LineTo(P(250,a),true,false);g.ArcTo(P(250,b),new(250,250),0,b-a>Math.PI,SweepDirection.Clockwise,true,false);g.LineTo(P(108,b),true,false);g.ArcTo(P(108,a),new(108,108),0,b-a>Math.PI,SweepDirection.Counterclockwise,true,false);}canvas.Children.Add(new System.Windows.Shapes.Path{Data=geometry,Fill=Theme.Brush("Inset"),Stroke=Theme.Brush("Line")});
             var (stack,location)=WheelPresentation.Caption(tools[i],geometry,angle,half,count);var label=new Border{Child=stack,Width=stack.DesiredSize.Width,Height=stack.DesiredSize.Height,IsHitTestVisible=false};Canvas.SetLeft(label,location.X-label.Width/2);Canvas.SetTop(label,location.Y-label.Height/2);canvas.Children.Add(label);
         }
-        centerSource=count==0?"Keep dragging\nDrop a file or link":mode=="convert"?"Convert":mode=="actions"?"File actions":"Tools";centerText=new TextBlock{Text=centerSource,TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=VerticalAlignment.Center,FontSize=22,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink")};var center=new Border{Width=180,Height=180,IsHitTestVisible=false,Visibility=Revealed?Visibility.Visible:Visibility.Hidden,Child=L10n.Label(centerText)};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);
+        centerSource=count==0?(noTools?"No tools for this file type":"Keep dragging\nDrop a file or link"):mode=="convert"?"Convert":mode=="actions"?"File actions":"Tools";centerText=new TextBlock{Text=centerSource,TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=VerticalAlignment.Center,FontSize=22,FontWeight=FontWeights.SemiBold,Foreground=Theme.Brush("Ink")};var center=new Border{Width=180,Height=180,IsHitTestVisible=false,Visibility=Revealed?Visibility.Visible:Visibility.Hidden,Child=L10n.Label(centerText)};Canvas.SetLeft(center,180);Canvas.SetTop(center,180);canvas.Children.Add(center);
     }
 }
 
