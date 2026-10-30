@@ -30,15 +30,30 @@ public sealed partial class ToolEditor
     private readonly TextBlock pageLabel=new();private int pageRequest;
     private void StepPage(int delta){var next=inputOrder.SelectedIndex+delta;if(next>=0&&next<inputOrder.Items.Count)inputOrder.SelectedIndex=next;}
     // Shows the selected image in the preview and its page number; a newer request makes an older load stale.
+    private readonly SemaphoreSlim pageGate=new(1,1);private CancellationTokenSource? pageCancel;
     private async void ShowOrderedPage()
     {
         var index=inputOrder.SelectedIndex;if(index<0)return;
         pageLabel.Text=string.Format(L10n.Text("Page {0} of {1}"),index+1,inputOrder.Items.Count);
         var path=(string)((ListBoxItem)inputOrder.Items[index]).Tag;var request=++pageRequest;
-        System.Windows.Media.Imaging.BitmapSource page;
-        try{page=await Task.Run(()=>ImageEngine.Load(path));}
-        catch(Exception error)when(error is not OutOfMemoryException){return;}
-        if(request==pageRequest&&drawing.Children.Count>0)SetPhotoPreview(page);
+        pageCancel?.Cancel();var cancel=pageCancel=new CancellationTokenSource();
+        System.Windows.Media.Imaging.BitmapSource? page=null;
+        try
+        {
+            // Only one image loads at a time; a newer selection skips the ones still waiting.
+            await pageGate.WaitAsync(cancel.Token);
+            try{if(!cancel.IsCancellationRequested)page=await Task.Run(()=>ImageEngine.Load(path));}finally{pageGate.Release();}
+        }
+        catch(OperationCanceledException){return;}
+        catch(Exception error)when(error is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or FileFormatException or OutOfMemoryException){}
+        if(request!=pageRequest||drawing.Children.Count==0)return;
+        if(page is null)
+        {
+            // An unreadable image must not leave the previous one under the new page number.
+            pageLabel.Text+=" · "+L10n.Text("Preview unavailable");
+            var blank=System.Windows.Media.Imaging.BitmapSource.Create(1,1,96,96,System.Windows.Media.PixelFormats.Bgra32,null,new byte[4],4);blank.Freeze();SetPhotoPreview(blank);return;
+        }
+        SetPhotoPreview(page);
     }
     /// The name typed for the combined PDF, or null for the default.
     internal string? OutputName=>string.IsNullOrWhiteSpace(outputName.Text)?null:outputName.Text;
@@ -46,12 +61,19 @@ public sealed partial class ToolEditor
     private static FrameworkElement OrderRow(string path)
     {
         var row=new StackPanel{Orientation=Orientation.Horizontal};
+        System.Windows.Media.Imaging.BitmapSource? thumbnail=null;
         try
         {
-            var thumbnail=new System.Windows.Media.Imaging.BitmapImage();thumbnail.BeginInit();thumbnail.UriSource=new Uri(path);thumbnail.DecodePixelWidth=72;thumbnail.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;thumbnail.EndInit();thumbnail.Freeze();
-            row.Children.Add(new System.Windows.Controls.Image{Source=thumbnail,Width=36,Height=36,Stretch=System.Windows.Media.Stretch.UniformToFill,Margin=new(0,2,10,2)});
+            var small=new System.Windows.Media.Imaging.BitmapImage();small.BeginInit();small.UriSource=new Uri(path);small.DecodePixelWidth=72;small.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;small.EndInit();small.Freeze();thumbnail=small;
         }
         catch(Exception error)when(error is NotSupportedException or IOException or InvalidOperationException or UnauthorizedAccessException or FileFormatException){}
+        // WPF cannot decode every format Nashi reads (SVG, for example): use the engine's own loader then.
+        if(thumbnail is null)
+        {
+            try{thumbnail=ImageEngine.Load(path);}
+            catch(Exception error)when(error is NotSupportedException or IOException or InvalidOperationException or UnauthorizedAccessException or FileFormatException or InvalidDataException){}
+        }
+        if(thumbnail is not null)row.Children.Add(new System.Windows.Controls.Image{Source=thumbnail,Width=36,Height=36,Stretch=System.Windows.Media.Stretch.UniformToFill,Margin=new(0,2,10,2)});
         row.Children.Add(new TextBlock{Text=Path.GetFileName(path),VerticalAlignment=VerticalAlignment.Center});return row;
     }
 }
