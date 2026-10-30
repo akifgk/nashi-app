@@ -19,7 +19,7 @@ public sealed partial class MainWindow:Window
     private readonly TextBlock status=Text("Files stay on your computer.",12,"Muted");
     private readonly TextBox link=new(){ToolTip="Paste a public video, image or audio page link"};
     private readonly ComboBox downloadKind=new(){ItemsSource=new[]{"video","audio","thumbnail"},SelectedIndex=0,MinWidth=110};
-    private readonly Toolchain tools=new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi","Tools","v1"));
+    private readonly Toolchain tools=new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Nashi","Tools","v1"),Environment.GetEnvironmentVariable("PATH"));
     private readonly LibraryStore library;
     private readonly PreferencesStore preferences;private GlobalDragController? globalDrag;
     private readonly StackPanel home=new(),libraryPage=new(),libraryRows=new(),recentRows=new();
@@ -117,8 +117,10 @@ public sealed partial class MainWindow:Window
     private static Border Card(UIElement content){var card=new Border{CornerRadius=new(24),Padding=new(22),Margin=new(0,0,0,6),Child=content,BorderThickness=new(1)};card.SetResourceReference(Border.BackgroundProperty,"Surface");card.SetResourceReference(Border.BorderBrushProperty,"Line");return card;}
     public static Button Button(string title,Action action){var button=L10n.Content(new Button{Content=title});button.Click+=(_,_)=>action();return button;}
     internal static Button Primary(string title,Action action){var button=Button(title,action);button.Background=Theme.Primary;button.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));return button;}
-    public static void OpenUrl(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true});
-    public static void Reveal(string path){var full=Path.GetFullPath(path);if(!File.Exists(full)&&!Directory.Exists(full)){var parent=Path.GetDirectoryName(full);if(parent is null||!Directory.Exists(parent))return;full=parent;Process.Start(new ProcessStartInfo("explorer.exe"){UseShellExecute=false,Arguments="\""+full+"\""});return;}Process.Start(new ProcessStartInfo("explorer.exe"){UseShellExecute=false,Arguments="/select,\""+full+"\""});}
+    public static void OpenUrl(string url)=>Process.Start(new ProcessStartInfo(url){UseShellExecute=true})?.Dispose();
+    public static void Reveal(string path){var full=Path.GetFullPath(path);if(!File.Exists(full)&&!Directory.Exists(full)){var parent=Path.GetDirectoryName(full);if(parent is null||!Directory.Exists(parent))return;full=parent;Process.Start(new ProcessStartInfo("explorer.exe"){UseShellExecute=false,Arguments=Quoted(full)})?.Dispose();return;}Process.Start(new ProcessStartInfo("explorer.exe"){UseShellExecute=false,Arguments="/select,"+Quoted(full)})?.Dispose();}
+    // One argument for explorer.exe: a trailing backslash (a drive root) must be doubled or it escapes the closing quote.
+    private static string Quoted(string path)=>"\""+path+(path.EndsWith('\\')?"\\":"")+"\"";
     private void Choose(){if(busy)return;var picker=new OpenFileDialog{Multiselect=true,Title=L10n.Text("Choose files for Nashi")};if(picker.ShowDialog(this)==true){Add(picker.FileNames);ShowLibrary(false);}}
     private void Add(IEnumerable<string> paths){foreach(var path in paths.Where(p=>File.Exists(p)||Directory.Exists(p))){var full=Path.GetFullPath(path);if(!files.Contains(full))files.Add(full);}Refresh();}
     internal void ShowLibrary(bool visible)

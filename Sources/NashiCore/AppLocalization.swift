@@ -2,11 +2,14 @@ import Foundation
 
 /// UI copy only. File names, document contents, identifiers and export parameters stay verbatim.
 public enum AppLocalization {
-    public static let supportedLanguages = ["en", "tr"]
+    public static let supportedLanguages = ["en", "tr", "fr"]
     public static func normalizedLanguage(_ value: String?) -> String { supportedLanguages.contains(value ?? "") ? value! : "en" }
     public static func matches(_ source:String,query:String,language:String)->Bool {
         let locale=Locale(identifier:normalizedLanguage(language))
-        return [source,text(source,language:language)].contains { $0.range(of:query,options:[.caseInsensitive,.diacriticInsensitive],locale:locale) != nil }
+        // Pasted queries keep stray spaces; a blank query filters nothing, like an empty one.
+        let needle=query.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !needle.isEmpty else { return true }
+        return [source,text(source,language:language)].contains { $0.range(of:needle,options:[.caseInsensitive,.diacriticInsensitive],locale:locale) != nil }
     }
     private static func loadCatalog(_ name:String) -> [String:String] {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Resources"),
@@ -15,10 +18,12 @@ public enum AppLocalization {
         return values
     }
     public static let turkish: [String: String] = loadCatalog("Turkish")
+    public static let french: [String: String] = loadCatalog("French")
     /// Source-to-translation table for a non-English language; empty for English.
     public static func catalog(for language: String) -> [String: String] {
         switch normalizedLanguage(language) {
         case "tr": return turkish
+        case "fr": return french
         default: return [:]
         }
     }
@@ -34,6 +39,7 @@ public enum AppLocalization {
         let latin = Locale(identifier:"en_US_POSIX")
         switch normalizedLanguage(language) {
         case "tr": break
+        case "fr": return value.uppercased(with:Locale(identifier:"fr_FR"))
         default: return value.uppercased(with:latin)
         }
         let turkishLocale = Locale(identifier:"tr_TR")

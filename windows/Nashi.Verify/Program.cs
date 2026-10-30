@@ -121,6 +121,7 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var crop=await engine.ToolAsync("cropVideo",[source],directory,new(){Regions=[new(0,0,64,40)]});var cropped=await engine.InspectAsync(crop[0]);Check(cropped.Video?.Width==64&&cropped.Video.Height==40,"Crop dimensions wrong");
         var clips=await engine.ToolAsync("splitVideo",[source],directory,new(){EqualClips=2});Check(clips.Count==2,"Split count wrong");
         foreach(var clip in clips)Check((await engine.InspectAsync(clip)).Duration<1.25,"Split interval wrong");
+        var sourceDuration=(await engine.InspectAsync(source)).Duration;var tail=await engine.ToolAsync("splitVideo",[source],directory,new(){SplitInterval=sourceDuration/2-.01});Check(tail.Count==2,"A sub-0.05 s interval remainder failed the split instead of joining the last clip");
         var joined=await engine.ToolAsync("joinVideos",clips,directory,new());Check((await engine.InspectAsync(joined[0])).Duration>1.8,"Join lost content");
         var normalized=await engine.ToolAsync("normalizeAudio",audio,directory,new());var normalizedInfo=await engine.InspectAsync(normalized[0]);Check(normalizedInfo.HasAudio,"Normalization failed");
         // loudnorm runs at 192 kHz; PCM outputs keep that rate unless the source rate is requested (MP3 cannot exceed 48 kHz, so test WAV).
@@ -133,6 +134,7 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var redacted=await engine.ToolAsync("redactVideo",[source],directory,new(){Regions=[new(0,0,32,32,.25,.75)],RedactionMode="blur"});Check((await engine.InspectAsync(redacted[0])).Video is not null,"Video redaction failed");
         var channels=await engine.ToolAsync("audioChannels",audio,directory,new(){Channels=1});Check((await engine.InspectAsync(channels[0])).HasAudio,"Channel export failed");
         var visualized=await engine.ToolAsync("audioToVideo",audio,directory,new(){Width=128,Height=72});Check((await engine.InspectAsync(visualized[0])).Video?.Width==128,"Audio visualization failed");
+        var cover=Path.Combine(directory,"Cover.png");await ProcessRunner.RunAsync(encoder,["-v","error","-f","lavfi","-i","color=c=red:s=64x64","-frames:v","1",cover]);var still=await engine.ToolAsync("audioToVideo",audio,directory,new(){Width=128,Height=72,Visualization="image",VisualizationImage=cover});Check((await engine.InspectAsync(still[0])).Video?.Width==128,"Still-image visualization failed");
         var compressed=await engine.ToolAsync("compress",[source],directory,new(){TargetBytes=100000});Check(new FileInfo(compressed[0]).Length<=100000,"Compression ignored target");
         var metadata=await engine.ToolAsync("removeMetadata",[source],directory,new());Check((await engine.InspectAsync(metadata[0])).Video is not null,"Metadata export failed");
         foreach(var ext in MediaEngine.AudioFormats)

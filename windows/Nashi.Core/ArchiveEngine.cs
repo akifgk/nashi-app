@@ -18,9 +18,15 @@ public static class ArchiveEngine
         try{return StrictUtf8.GetString(bytes,index,count);}
         catch(DecoderFallbackException){return LegacyTextCodec.Oem.GetString(bytes,index,count);}
     }
+    /// Names outputs of "Name.tar.gz" after "Name", as is already done for "Name.tgz".
+    private static string Stem(string input)
+    {
+        var stem=Path.GetFileNameWithoutExtension(input);
+        return FeatureCatalog.Extension(input)=="gz"&&Path.GetExtension(stem).Equals(".tar",StringComparison.OrdinalIgnoreCase)?Path.GetFileNameWithoutExtension(stem):stem;
+    }
     public static IReadOnlyList<string> Extract(string input,string destination,string? password=null,IProgress<OperationProgress>? progress=null,CancellationToken token=default)
     {
-        using var tx=new ExportTransaction(destination);var folder=Path.Combine(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+" Extracted");Directory.CreateDirectory(folder);
+        using var tx=new ExportTransaction(destination);var folder=Path.Combine(tx.StagingDirectory,Stem(input)+" Extracted");Directory.CreateDirectory(folder);
         var sourcePath=input;
         using(var original=File.OpenRead(input))
         {
@@ -50,7 +56,7 @@ public static class ArchiveEngine
     {
         if(format is not ("zip" or "tar" or "gz"))throw new ArgumentException("Choose ZIP, TAR or GZIP.");
         using var tx=new ExportTransaction(destination);var work=Path.Combine(tx.StagingDirectory,"contents");Directory.CreateDirectory(work);
-        var extracted=Extract(input,work,password,progress,token)[0];var output=Path.Combine(tx.StagingDirectory,Path.GetFileNameWithoutExtension(input)+"."+format);
+        var extracted=Extract(input,work,password,progress,token)[0];var output=Path.Combine(tx.StagingDirectory,Stem(input)+"."+format);
         if(format=="zip")
         {
             using var zip=ZipFile.Open(output,ZipArchiveMode.Create);foreach(var path in Directory.EnumerateFileSystemEntries(extracted,"*",SearchOption.AllDirectories)){token.ThrowIfCancellationRequested();var name=Path.GetRelativePath(extracted,path).Replace('\\','/');if(Directory.Exists(path)){zip.CreateEntry(name+"/");continue;}using var source=File.OpenRead(path);using var entry=zip.CreateEntry(name,CompressionLevel.Optimal).Open();var buffer=new byte[81920];int read;while((read=source.Read(buffer))>0){token.ThrowIfCancellationRequested();entry.Write(buffer,0,read);}}
