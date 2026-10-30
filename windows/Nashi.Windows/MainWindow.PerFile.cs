@@ -26,13 +26,23 @@ public sealed partial class MainWindow
                 try{results.AddRange(await OnStaAsync(()=>ImageEngine.Apply(choice.Id,[file],holding,options)));}
                 finally{SetBusy(false);}
             }
-            await RunAsync((destination,p,t)=>
+            await RunAsync((destination,p,t)=>Task.Run<IReadOnlyList<string>>(()=>
             {
                 using var tx=new ExportTransaction(destination);
-                var staged=results.Select(path=>{var target=SafePaths.Unique(tx.StagingDirectory,Path.GetFileName(path));File.Move(path,target);return target;}).ToList();
-                return Task.FromResult(tx.Publish(staged,t));
-            },choice.Title);
+                // Copy, not move: the files then take the permissions of the destination folder, not of the temp folder.
+                var staged=results.Select(path=>{t.ThrowIfCancellationRequested();var target=SafePaths.Unique(tx.StagingDirectory,Path.GetFileName(path));File.Copy(path,target);return target;}).ToList();
+                return tx.Publish(staged,t);
+            },t),choice.Title);
         }
-        finally{try{Directory.Delete(holding,true);}catch(Exception error)when(error is IOException or UnauthorizedAccessException){}}
+        finally{await DeleteFolderAsync(holding);}
+    }
+    // A file can stay locked for a moment after it was written (antivirus, indexing): retry a few times, never throw.
+    private static async Task DeleteFolderAsync(string folder)
+    {
+        for(var attempt=0;attempt<5;attempt++)
+        {
+            try{if(Directory.Exists(folder))Directory.Delete(folder,true);return;}
+            catch(Exception error)when(error is IOException or UnauthorizedAccessException){await Task.Delay(150*(attempt+1));}
+        }
     }
 }
