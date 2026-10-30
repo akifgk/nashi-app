@@ -1423,6 +1423,7 @@
 "PREVIEW PROCESSED" = "İŞLENMİŞİ ÖNİZLE";
 "PREVIEW READY · EXPORT USES YOUR ORIGINAL FILE." = "ÖNİZLEME HAZIR · DIŞA AKTARIRKEN ORİJİNAL DOSYAN KULLANILIR.";
 "PREVIEW RIGHT" = "SAĞI ÖNİZLE";
+"PREVIEW UNAVAILABLE" = "ÖNİZLEME YOK";
 "PREVIEW USES THE FIRST 12 SECONDS. EXPORT INCLUDES THE FULL RECORDING." = "ÖNİZLEME İLK 12 SANİYEYİ KULLANIR. DIŞA AKTARMA KAYDIN TAMAMINI İÇERİR.";
 "PREVIEW VISUALIZATION" = "GÖRSELLEŞTİRMEYİ ÖNİZLE";
 "PREVIOUS FRAME" = "ÖNCEKİ KARE";
@@ -1489,6 +1490,7 @@
 "Preview Visualization" = "Görselleştirmeyi Önizle";
 "Preview position" = "Önizleme konumu";
 "Preview ready · export uses your original file." = "Önizleme hazır · dışa aktarırken orijinal dosyan kullanılır.";
+"Preview unavailable" = "Önizleme yok";
 "Preview unavailable: %@" = "Önizleme kullanılamıyor: %@";
 "Preview unavailable: %lld" = "Önizleme kullanılamıyor: %lld";
 "Preview uses the first 12 seconds. Export includes the full recording." = "Önizleme ilk 12 saniyeyi kullanır. Dışa aktarma kaydın tamamını içerir.";

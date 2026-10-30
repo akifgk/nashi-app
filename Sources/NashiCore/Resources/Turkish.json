@@ -1133,5 +1133,6 @@
   "Next image": "Sonraki görsel",
   "Page {0} of {1}": "Sayfa {0} / {1}",
   "File name": "Dosya adı",
-  "Without .pdf. Leave empty for the default name.": "Uzantısız yazın (.pdf eklenir). Varsayılan ad için boş bırakın."
+  "Without .pdf. Leave empty for the default name.": "Uzantısız yazın (.pdf eklenir). Varsayılan ad için boş bırakın.",
+  "Preview unavailable": "Önizleme yok"
 }

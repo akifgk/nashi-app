@@ -6,29 +6,33 @@ namespace Nashi.Windows;
 public sealed partial class MainWindow
 {
     /// Crop, cover and annotate with several images selected: each image opens in its own editor
-    /// ("Crop Image 2/3"), so every one keeps its own area or drawing. Cancel at any step cancels all.
+    /// ("Crop Image 2/3"), so every one keeps its own area or drawing. Each confirmed image is exported at once
+    /// into a private folder, so no full-size bitmap is kept while the next editors are open. Nothing is
+    /// published until every editor is confirmed; Cancel at any step discards all of it.
     private async Task EditImagesOneByOneAsync(ToolChoice choice,string[] selected)
     {
-        var settings=new List<ImageOptions>();
-        for(var n=0;n<selected.Length;n++)
+        var holding=Path.Combine(Path.GetTempPath(),"Nashi-batch-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(holding);
+        try
         {
-            var file=selected[n];var editor=new ToolEditor(this,choice.Id,choice.Title,file,null,ImageEngine.Load(file),[file],null);
-            editor.ConfigureProfiles(preferences,null);editor.ConfigureMediaRuntime(tools);
-            editor.Title=L10n.Text(choice.Title)+" "+(n+1)+"/"+selected.Length+" · Nashi";
-            if(editor.ShowDialog()!=true)return;
-            settings.Add(editor.ImageOptions);
-        }
-        var encoder=tools.Ready?tools.Executable("ffmpeg"):null;
-        await RunAsync(async(destination,p,t)=>
-        {
-            using var tx=new ExportTransaction(destination);var exported=new List<string>();
+            var results=new List<string>();var encoder=tools.Ready?tools.Executable("ffmpeg"):null;
             for(var n=0;n<selected.Length;n++)
             {
-                var index=n;t.ThrowIfCancellationRequested();
-                exported.AddRange(await OnStaAsync(()=>ImageEngine.Apply(choice.Id,[selected[index]],tx.StagingDirectory,settings[index] with{EncoderPath=encoder},null,t,null)));
-                p.Report(new((index+1d)/selected.Length*.95,$"{index+1} / {selected.Length}"));
+                var file=selected[n];var editor=new ToolEditor(this,choice.Id,choice.Title,file,null,ImageEngine.Load(file),[file],null);
+                editor.ConfigureProfiles(preferences,null);editor.ConfigureMediaRuntime(tools);
+                editor.Title=L10n.Text(choice.Title)+" "+(n+1)+"/"+selected.Length+" · Nashi";
+                if(editor.ShowDialog()!=true)return;
+                var options=editor.ImageOptions with{EncoderPath=encoder};
+                SetBusy(true);
+                try{results.AddRange(await OnStaAsync(()=>ImageEngine.Apply(choice.Id,[file],holding,options)));}
+                finally{SetBusy(false);}
             }
-            return tx.Publish(exported,t);
-        },choice.Title);
+            await RunAsync((destination,p,t)=>
+            {
+                using var tx=new ExportTransaction(destination);
+                var staged=results.Select(path=>{var target=SafePaths.Unique(tx.StagingDirectory,Path.GetFileName(path));File.Move(path,target);return target;}).ToList();
+                return Task.FromResult(tx.Publish(staged,t));
+            },choice.Title);
+        }
+        finally{try{Directory.Delete(holding,true);}catch(Exception error)when(error is IOException or UnauthorizedAccessException){}}
     }
 }

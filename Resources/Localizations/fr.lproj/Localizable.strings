@@ -1423,6 +1423,7 @@
 "PREVIEW PROCESSED" = "APERÇU DU RÉSULTAT TRAITÉ";
 "PREVIEW READY · EXPORT USES YOUR ORIGINAL FILE." = "APERÇU PRÊT · L’EXPORT UTILISE VOTRE FICHIER D’ORIGINE.";
 "PREVIEW RIGHT" = "APERÇU À DROITE";
+"PREVIEW UNAVAILABLE" = "APERÇU INDISPONIBLE";
 "PREVIEW USES THE FIRST 12 SECONDS. EXPORT INCLUDES THE FULL RECORDING." = "L’APERÇU UTILISE LES 12 PREMIÈRES SECONDES. L’EXPORT INCLUT L’ENREGISTREMENT COMPLET.";
 "PREVIEW VISUALIZATION" = "APERÇU DE LA VISUALISATION";
 "PREVIOUS FRAME" = "IMAGE PRÉCÉDENTE";
@@ -1489,6 +1490,7 @@
 "Preview Visualization" = "Aperçu de la visualisation";
 "Preview position" = "Position de l’aperçu";
 "Preview ready · export uses your original file." = "Aperçu prêt · l’export utilise votre fichier d’origine.";
+"Preview unavailable" = "Aperçu indisponible";
 "Preview unavailable: %@" = "Aperçu indisponible : %@";
 "Preview unavailable: %lld" = "Aperçu indisponible : %lld";
 "Preview uses the first 12 seconds. Export includes the full recording." = "L’aperçu utilise les 12 premières secondes. L’export inclut l’enregistrement complet.";

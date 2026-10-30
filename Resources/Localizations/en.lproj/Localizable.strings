@@ -1423,6 +1423,7 @@
 "PREVIEW PROCESSED" = "PREVIEW PROCESSED";
 "PREVIEW READY · EXPORT USES YOUR ORIGINAL FILE." = "PREVIEW READY · EXPORT USES YOUR ORIGINAL FILE.";
 "PREVIEW RIGHT" = "PREVIEW RIGHT";
+"PREVIEW UNAVAILABLE" = "PREVIEW UNAVAILABLE";
 "PREVIEW USES THE FIRST 12 SECONDS. EXPORT INCLUDES THE FULL RECORDING." = "PREVIEW USES THE FIRST 12 SECONDS. EXPORT INCLUDES THE FULL RECORDING.";
 "PREVIEW VISUALIZATION" = "PREVIEW VISUALIZATION";
 "PREVIOUS FRAME" = "PREVIOUS FRAME";
@@ -1489,6 +1490,7 @@
 "Preview Visualization" = "Preview Visualization";
 "Preview position" = "Preview position";
 "Preview ready · export uses your original file." = "Preview ready · export uses your original file.";
+"Preview unavailable" = "Preview unavailable";
 "Preview unavailable: %@" = "Preview unavailable: %@";
 "Preview unavailable: %lld" = "Preview unavailable: %lld";
 "Preview uses the first 12 seconds. Export includes the full recording." = "Preview uses the first 12 seconds. Export includes the full recording.";
