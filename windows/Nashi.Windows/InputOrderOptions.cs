@@ -57,6 +57,19 @@ public sealed partial class ToolEditor
     }
     /// The name typed for the combined PDF, or null for the default.
     internal string? OutputName=>string.IsNullOrWhiteSpace(outputName.Text)?null:outputName.Text;
+    private static async Task FillThumbnailAsync(System.Windows.Controls.Image picture,string path)
+    {
+        try
+        {
+            var small=await Task.Run(()=>
+            {
+                var full=ImageEngine.Load(path);var scale=Math.Min(1d,72d/Math.Max(full.PixelWidth,full.PixelHeight));
+                var scaled=new System.Windows.Media.Imaging.TransformedBitmap(full,new System.Windows.Media.ScaleTransform(scale,scale));scaled.Freeze();return scaled;
+            });
+            picture.Source=small;
+        }
+        catch(Exception error)when(error is NotSupportedException or IOException or InvalidOperationException or UnauthorizedAccessException or FileFormatException or InvalidDataException or OutOfMemoryException){}
+    }
     // A small preview next to the name, so every selected image is visible while ordering a PDF.
     private static FrameworkElement OrderRow(string path)
     {
@@ -67,13 +80,11 @@ public sealed partial class ToolEditor
             var small=new System.Windows.Media.Imaging.BitmapImage();small.BeginInit();small.UriSource=new Uri(path);small.DecodePixelWidth=72;small.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;small.EndInit();small.Freeze();thumbnail=small;
         }
         catch(Exception error)when(error is NotSupportedException or IOException or InvalidOperationException or UnauthorizedAccessException or FileFormatException){}
-        // WPF cannot decode every format Nashi reads (SVG, for example): use the engine's own loader then.
-        if(thumbnail is null)
-        {
-            try{thumbnail=ImageEngine.Load(path);}
-            catch(Exception error)when(error is NotSupportedException or IOException or InvalidOperationException or UnauthorizedAccessException or FileFormatException or InvalidDataException){}
-        }
-        if(thumbnail is not null)row.Children.Add(new System.Windows.Controls.Image{Source=thumbnail,Width=36,Height=36,Stretch=System.Windows.Media.Stretch.UniformToFill,Margin=new(0,2,10,2)});
+        var picture=new System.Windows.Controls.Image{Width=36,Height=36,Stretch=System.Windows.Media.Stretch.UniformToFill,Margin=new(0,2,10,2),Source=thumbnail};
+        row.Children.Add(picture);
+        // WPF cannot decode every format Nashi reads (SVG, for example): the engine's own loader fills the picture in
+        // later, off the UI thread, and only a small copy is kept.
+        if(thumbnail is null)_=FillThumbnailAsync(picture,path);
         row.Children.Add(new TextBlock{Text=Path.GetFileName(path),VerticalAlignment=VerticalAlignment.Center});return row;
     }
 }

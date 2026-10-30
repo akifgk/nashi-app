@@ -27,7 +27,7 @@ public static class SafePaths
     public static string FileStem(string? name, string fallback, params string[] extensions)
     {
         // The Windows set on every platform, so a name typed on one system is valid on the others.
-        var invalid = Path.GetInvalidFileNameChars().Concat(WindowsInvalid).ToHashSet();
+        var invalid = Path.GetInvalidFileNameChars().Concat(WindowsInvalid).Concat(Enumerable.Range(0, 32).Select(n => (char)n)).ToHashSet();
         var stem = new string((name ?? "").Where(c => !invalid.Contains(c) && c is not ('/' or '\\')).ToArray()).Trim();
         foreach (var extension in extensions)
             if (stem.EndsWith(extension, StringComparison.OrdinalIgnoreCase)) { stem = stem[..^extension.Length]; break; }
