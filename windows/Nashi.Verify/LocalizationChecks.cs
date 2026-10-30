@@ -33,6 +33,7 @@ internal static class LocalizationChecks
         foreach(var value in new[]{"Home.png","MP4","Ctrl+Shift","⌘S","00:01.250"})check(AppLocalization.Text(value,"fr")==value,"French translation changed a format, path or shortcut");
         foreach(var (source,target) in AppLocalization.French)check(Regex.Matches(source,@"\{[0-9]\}").Select(m=>m.Value).Order().SequenceEqual(Regex.Matches(target,@"\{[0-9]\}").Select(m=>m.Value).Order()),"French translation placeholders differ: "+source);
         check(AppLocalization.French.Keys.All(AppLocalization.Turkish.ContainsKey),"French.json has keys that Turkish.json lacks");
+        check(AppLocalization.Turkish.Keys.All(AppLocalization.French.ContainsKey),"Turkish.json has keys that French.json lacks");
         var frenchDirectory=Path.Combine(root,"French preferences");new PreferencesStore(frenchDirectory).Save(new Preferences{Language="fr",Feedback=false});check(new PreferencesStore(frenchDirectory).Value.Language=="fr","French setting did not persist");
     }
 }
