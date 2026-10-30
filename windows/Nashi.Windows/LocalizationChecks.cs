@@ -35,7 +35,7 @@ internal static class LocalizationChecks
             L10n.Language="en";settings.Show();editor.Show();DesktopInput.Pump();
             editor.FieldForTest("Width").Text="123";
             var language=Children(settings).OfType<ComboBox>().Single(c=>AutomationProperties.GetAutomationId(c)=="AppLanguage");
-            language.Focus();DesktopInput.Key(settings,Key.End);DesktopInput.Pump();
+            language.Focus();DesktopInput.Key(settings,Key.Down);DesktopInput.Pump();   // English → Türkçe (Français follows it)
             check(prefs.Value.Language=="tr"&&new PreferencesStore(Path.Combine(directory,"Language profile")).Value.Language=="tr","Turkish setting did not persist through a real picker selection");
             check(Children(settings).OfType<TextBlock>().Any(t=>t.Text=="Dil"),"Settings language label did not update live");
             check(Children(owner).OfType<Button>().Any(b=>b.Content as string=="Ana Sayfa"),"Open Home buttons did not switch to Turkish");
