@@ -24,6 +24,34 @@ internal static class DownloadChecks
             catch(HttpRequestException error){check(!listener.Pending()&&error.ToString().Contains("private network"),"A name that resolves to this computer is refused before the connection is made");}
         }
         finally{listener.Stop();}
+        // The proxy used for yt-dlp: private targets get 403 before any connection; allowed targets are piped through.
+        async Task<string> ProxyRequest(PublicOnlyProxy proxy,string request)
+        {
+            using var tcp=new System.Net.Sockets.TcpClient();await tcp.ConnectAsync(IPAddress.Loopback,int.Parse(proxy.Url[(proxy.Url.LastIndexOf(':')+1)..]));
+            var stream=tcp.GetStream();await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(request));
+            var buffer=new byte[512];var read=await stream.ReadAsync(buffer);return System.Text.Encoding.ASCII.GetString(buffer,0,read);
+        }
+        var secret=new System.Net.Sockets.TcpListener(IPAddress.Loopback,0);secret.Start();
+        try
+        {
+            var secretPort=((IPEndPoint)secret.LocalEndpoint).Port;
+            using(var strict=new PublicOnlyProxy())
+            {
+                foreach(var target in new[]{"localhost","127.0.0.1","10.0.0.5","192.168.1.9","169.254.169.254","[::1]"})
+                {
+                    var answer=await ProxyRequest(strict,$"CONNECT {target}:{secretPort} HTTP/1.1\r\nHost: {target}\r\n\r\n");
+                    check(answer.StartsWith("HTTP/1.1 403"),"Proxy let CONNECT reach "+target);
+                }
+                check((await ProxyRequest(strict,$"GET http://localhost:{secretPort}/x HTTP/1.1\r\nHost: localhost\r\n\r\n")).StartsWith("HTTP/1.1 403"),"Proxy let a plain HTTP request reach localhost");
+                check((await ProxyRequest(strict,"CONNECT\r\n\r\n")).StartsWith("HTTP/1.1 400"),"Proxy accepted a malformed request");
+                check(!secret.Pending(),"A refused request still reached the local service");
+            }
+            using var open=new PublicOnlyProxy(_=>true);
+            var accept=secret.AcceptTcpClientAsync();
+            var connected=await ProxyRequest(open,$"CONNECT 127.0.0.1:{secretPort} HTTP/1.1\r\nHost: x\r\n\r\n");
+            check(connected.StartsWith("HTTP/1.1 200")&&await Task.WhenAny(accept,Task.Delay(3000))==accept,"Proxy did not connect an allowed target");
+        }
+        finally{secret.Stop();}
         foreach(var name in new[]{"http://127.1/a","http://2130706433/a","http://0x7f.1/a","http://167772161/a"})try{WebDownload.Validate(name);check(false,"Short or numeric loopback form accepted: "+name);}catch(ArgumentException){check(true,"Short and numeric IPv4 forms of private addresses are refused");}
         foreach(var name in new[]{"http://localhost./a","http://app.localhost./a","http://printer.local./a"})try{WebDownload.Validate(name);check(false,"Trailing-dot local name accepted: "+name);}catch(ArgumentException){check(true,"Trailing-dot local names are refused");}
         var uri=new Uri("https://download.example/fixture");var output=Path.Combine(root,"Download.bin");var bytes=new byte[]{1,2,3};
