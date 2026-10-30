@@ -21,6 +21,19 @@ public static class SafePaths
         return destination;
     }
 
+    /// A file name typed by the user, reduced to a safe stem: no path, no invalid characters, no extension that
+    /// Nashi adds itself, no trailing dots or spaces and no reserved device name. Falls back when nothing is left.
+    public static string FileStem(string? name, string fallback, params string[] extensions)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var stem = new string((name ?? "").Where(c => !invalid.Contains(c) && c is not ('/' or '\\')).ToArray()).Trim();
+        foreach (var extension in extensions)
+            if (stem.EndsWith(extension, StringComparison.OrdinalIgnoreCase)) { stem = stem[..^extension.Length]; break; }
+        stem = stem.TrimEnd('.', ' ');
+        if (stem.Length > 120) stem = stem[..120].TrimEnd('.', ' ');
+        if (stem.Length == 0) return fallback;
+        return Devices.Contains(stem.Split('.')[0]) ? stem + "_" : stem;
+    }
     public static string Unique(string directory, string filename)
     {
         if (Path.GetFileName(filename) != filename || filename.IndexOfAny(['/', '\\', ':', '\0']) >= 0)
