@@ -77,6 +77,9 @@ public sealed class GlobalDragController:IDisposable
         if(kind is null){if(!opened)ShowTip(point);return;}
         if(opened&&kind==openedKind)return;
         if(!opened){opened=true;if(InMoveSize()){blocked=true;HideTip();return;}wheelPoint=point;}
+        // The open wheel is the current OLE drop target: change its mode in place. A new window under the pointer
+        // would only receive DragEnter after the next mouse move, so it would stay invisible until then.
+        else if(wheel is {IsVisible:true}){wheel.SwitchMode(kind);openedKind=kind;HideLegend();HideTip();return;}
         else{wheel?.Close();wheel=null;HideLegend();}
         HideTip();openedKind=kind;var p=preferences.Value;
         wheel=new GlobalDropWheel(kind,p.WheelScale,(data,id)=>dropped(id,data,sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null),()=>sourceHint?.IsCompletedSuccessfully==true?sourceHint.Result:null);wheel.Show();DesktopGeometry.PlaceWheel(wheel,wheelPoint.X,wheelPoint.Y,WheelPresentation.Diameter*p.WheelScale);
@@ -138,7 +141,7 @@ internal sealed class GlobalDropWheel:Window
     private const double HiddenOpacity=.02;
     internal bool Revealed{get;private set;}
     private void Reveal(){if(Revealed)return;Revealed=true;foreach(var label in canvas.Children.OfType<Border>())label.Visibility=Visibility.Visible;WheelPresentation.Animate(this,HiddenOpacity);if(Opacity<1&&!HasAnimatedProperties)Opacity=1;}
-    private readonly string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540,Background=Brushes.Transparent,AllowDrop=true};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
+    private string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540,Background=Brushes.Transparent,AllowDrop=true};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
     public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
     {
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=WheelPresentation.Diameter*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Opacity=HiddenOpacity;
@@ -148,6 +151,8 @@ internal sealed class GlobalDropWheel:Window
         DragOver+=(_,e)=>{over++;Track(e);if(choices.Count>0)Reveal();};
         Drop+=(_,e)=>{dropCount++;Track(e);var id=selection;Close();if(id.Length>0)chosen(e.Data,id);e.Handled=true;};PreviewKeyDown+=(_,e)=>{if(e.Key==Key.Escape){Close();e.Handled=true;}};
     }
+    /// Switches Tools/Convert/File actions while a drag is over the wheel; the next DragOver rebuilds the segments.
+    internal void SwitchMode(string next){if(mode==next)return;mode=next;Title="Nashi · "+next;}
     private void Track(DragEventArgs e)
     {
         var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];var updated=Choices(files,Payload(e.Data));
