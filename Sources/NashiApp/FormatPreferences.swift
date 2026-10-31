@@ -133,11 +133,12 @@ enum FolderAccessPreferences {
         if let data=try? JSONEncoder().encode(remaining) { defaults.set(data,forKey:key) }
     }
     /// The parent folder's bookmark covers all of its descendants.
-    static func withAccess<T>(to output:URL,defaults:UserDefaults = .standard,_ action:() throws -> T) rethrows -> T {
-        let path=output.standardizedFileURL.path
+    /// Each covering grant is opened once for the whole batch, so stack depth does not grow with the file count.
+    static func withAccess<T>(to outputs:[URL],defaults:UserDefaults = .standard,_ action:() throws -> T) rethrows -> T {
+        let paths=outputs.map{$0.standardizedFileURL.path}
         let folders=grants(defaults:defaults).compactMap(resolved).filter { url in
             let parent=url.standardizedFileURL.path
-            return path==parent || path.hasPrefix(parent=="/" ? "/":parent+"/")
+            return paths.contains { path in path==parent || path.hasPrefix(parent=="/" ? "/":parent+"/") }
         }
         let active=folders.filter{$0.startAccessingSecurityScopedResource()}
         defer { for url in active { url.stopAccessingSecurityScopedResource() } }

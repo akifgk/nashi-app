@@ -8,6 +8,8 @@ do {
     }
     if args.count==3,args[1]=="inspect" {
         let input=URL(fileURLWithPath:args[2]),category=FileCategory.detect(input)
+        // Categories without a reader would otherwise report a missing path as success.
+        guard FileManager.default.fileExists(atPath:input.path) else { throw NashiError.invalidInput("File not found: \(input.lastPathComponent)") }
         var result:[String:Any]=["category":category.rawValue]
         switch category {
         case .image:let cg=try ImageEngine.load(input);result["width"]=cg.width;result["height"]=cg.height
@@ -20,7 +22,7 @@ do {
     if args.count==2,args[1]=="dependencies" {
         var result:[String:String]=[:];for name in ["ffmpeg","ffprobe","soffice","exiftool"] { result[name]=try Dependencies.executable(name).path };print(String(decoding:try JSONSerialization.data(withJSONObject:result,options:.sortedKeys),as:UTF8.self));return 0
     }
-    guard args.count>=4 else { print("Usage: nashi-cli convert FORMAT FILE... [--options JSON]\n       nashi-cli tool TOOL_ID FILE... [--options JSON]\n       nashi-cli catalog");return 64 }
+    guard args.count>=4 else { fputs("Usage: nashi-cli convert FORMAT FILE... [--options JSON] [--json]\n       nashi-cli tool TOOL_ID FILE... [--options JSON] [--json]\n       nashi-cli inspect FILE\n       nashi-cli catalog\n       nashi-cli dependencies\n",stderr);return 64 }
     var options=OperationOptions(), paths=Array(args.dropFirst(3))
     let jsonOutput=paths.contains("--json");paths.removeAll{$0=="--json"}
     if let i=paths.firstIndex(of:"--options"),i+1<paths.count {

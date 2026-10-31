@@ -9,7 +9,8 @@ import NashiCore
     @Published var maximumHeight=0
     @Published var inspecting=false
     @Published var downloading=false
-    @Published var error:String?
+    @Published var error:String? { didSet { errorDetails=nil } }
+    @Published var errorDetails:String?
     @Published var completed:[URL]=[]
     @Published var selectedPhotos=Set<Int>()
     @Published var shortcutAvailable=false
@@ -25,18 +26,17 @@ import NashiCore
         destination=UserDefaults.standard.string(forKey:"webDownloadDestination").map{URL(fileURLWithPath:$0,isDirectory:true)} ?? FileManager.default.urls(for:.downloadsDirectory,in:.userDomainMask)[0]
     }
     func open(_ url:URL?,mode:WebDownloadMode) {
-        guard !downloading else { return }
-        pendingMode=mode
-        if let url { linkText=url.absoluteString;inspect() }
+        guard !downloading,let url else { return }
+        pendingMode=mode;linkText=url.absoluteString;inspect()
     }
     func editedLink() {
         guard !downloading else { return }
-        inspection?.cancel();inspectionToken.cancel();revision=UUID();inspecting=false;info=nil;error=nil;completed=[]
+        inspection?.cancel();inspectionToken.cancel();revision=UUID();inspecting=false;info=nil;error=nil;completed=[];pendingMode=nil
     }
     func pasteLink() {
         guard !downloading else { return }
         guard let url=WebLinkPayload.clipboardLink() else { error="Copy a video share link or an image address first.";return }
-        linkText=url.absoluteString;inspect()
+        pendingMode=nil;linkText=url.absoluteString;inspect()
     }
     func inspect() {
         guard !downloading else { return }
@@ -56,7 +56,7 @@ import NashiCore
                 self.pendingMode=nil;self.inspecting=false
             } catch {
                 guard let self,self.revision==current,!token.isCancelled,!Task.isCancelled else { return }
-                self.error=error.localizedDescription;self.inspecting=false
+                self.error=error.localizedDescription;self.errorDetails=(error as? WebDownloadFailure)?.details;self.inspecting=false
             }
         }
     }
@@ -65,11 +65,11 @@ import NashiCore
     func selectPhotos(_ ids:Set<Int>) { guard !downloading else { return };selectedPhotos=ids;configurationChanged() }
     func chooseDestination() {
         guard !downloading else { return }
-        let panel=NSOpenPanel();panel.canChooseFiles=false;panel.canChooseDirectories=true;panel.canCreateDirectories=true;panel.directoryURL=destination;panel.prompt="Save Downloads Here"
+        let panel=NSOpenPanel();panel.canChooseFiles=false;panel.canChooseDirectories=true;panel.canCreateDirectories=true;panel.directoryURL=destination;panel.prompt=L10n.text("Save Downloads Here")
         if panel.runModal() == .OK,let url=panel.url { do { try FolderAccessPreferences.add([url]);configurationChanged();destination=url;UserDefaults.standard.set(url.path,forKey:"webDownloadDestination") } catch { self.error=error.localizedDescription } }
     }
     func download() {
-        guard let info,!downloading,!state.working else { return }
+        guard let info,!downloading,!state.working,info.photos.isEmpty || !selectedPhotos.isEmpty else { return }
         let mode=mode,maximum=maximumHeight>0 ? maximumHeight:nil,folder=destination
         let selection=info.photos.isEmpty ? nil:selectedPhotos
         downloading=true;error=nil;completed=[]
@@ -85,6 +85,7 @@ import NashiCore
                 state.recordWebDownload(files,site:info.url.host ?? "Web")
             } catch {
                 state.stopProgressUpdates();self.error=token.isCancelled ? "Download cancelled. No partial files were kept.":error.localizedDescription
+                if !token.isCancelled { self.errorDetails=(error as? WebDownloadFailure)?.details }
                 if !token.isCancelled { state.error=error.localizedDescription }
             }
         }
@@ -167,10 +168,18 @@ struct WebDownloadView:View {
                         Spacer();Button("Change…") { model.chooseDestination() }.disabled(model.downloading)
                     }.padding(15).nashiCard()
                     if model.downloading {
-                        VStack(alignment:.leading,spacing:9) { HStack { LText(state.progressLabel).font(.caption);Spacer();if state.progressIsDeterminate { Text("\(Int(state.progress*100))%").font(.caption.monospacedDigit()) } };JobProgressBar(state:state) }
+                        VStack(alignment:.leading,spacing:9) { HStack { LText(state.progressLabel).font(.caption);Spacer();if state.progressIsDeterminate { Text(Int(state.progress*100),format:.percent).font(.caption.monospacedDigit()) } };JobProgressBar(state:state) }
                     }
                     if !model.completed.isEmpty { Label("Ready on your Mac",systemImage:"checkmark.circle.fill").foregroundStyle(NashiPalette.forest);Text(model.completed.map(\.lastPathComponent).joined(separator:"\n")).font(.caption).textSelection(.enabled) }
-                    if let error=model.error { Label(error,systemImage:"exclamationmark.circle").font(.callout).foregroundStyle(.orange).fixedSize(horizontal:false,vertical:true) }
+                    if let error=model.error { Label { LText(error) } icon:{ Image(systemName:"exclamationmark.circle") }.font(.callout).foregroundStyle(.orange).fixedSize(horizontal:false,vertical:true) }
+                    if let details=model.errorDetails {
+                        DisclosureGroup {
+                            VStack(alignment:.leading,spacing:8) {
+                                Text(verbatim:details).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal:false,vertical:true)
+                                Button("Copy details") { NSPasteboard.general.clearContents();NSPasteboard.general.setString(details,forType:.string) }
+                            }.padding(.top,6)
+                        } label:{ LText("Details").font(.caption) }
+                    }
                     if state.working,!model.downloading { Text("Another task is running. Your link is ready when it finishes.").font(.caption).foregroundStyle(.secondary) }
                     VStack(alignment:.leading,spacing:7) {
                         LText(model.shortcutAvailable ? "Copy a link → ⌃⇧D, or drag it with ⌘.":"Copy a link, then choose Download Link from the Nashi menu.").font(.caption)
@@ -183,15 +192,16 @@ struct WebDownloadView:View {
                 if model.downloading { Button("Cancel download") { state.token.cancel() } }
                 else if !model.completed.isEmpty { Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting(model.completed) } }
                 Spacer()
-                if !model.completed.isEmpty { Button("Use in Nashi") { model.onUseFiles?() }.buttonStyle(NashiButtonStyle(.primary)) }
+                if !model.completed.isEmpty { Button("Use in Nashi") { model.onUseFiles?() }.buttonStyle(NashiButtonStyle(.primary)).disabled(state.working) }
                 else if let info=model.info { Button(!info.photos.isEmpty ? "Download \(model.selectedPhotos.count) \(model.selectedPhotos.count==1 ? "photo":"photos")":model.mode == .audioMP3 ? "Download MP3":info.kind == .image ? "Download image":"Download") { model.download() }.buttonStyle(NashiButtonStyle(.primary)).disabled(model.downloading || state.working || (!info.photos.isEmpty && model.selectedPhotos.isEmpty)) }
                 else { Button("Check link") { model.inspect() }.buttonStyle(NashiButtonStyle(.primary)).disabled(model.linkText.isEmpty || model.inspecting) }
             }.padding(20)
         }.onChange(of:model.mode) { _ in model.configurationChanged() }.onChange(of:model.maximumHeight) { _ in model.configurationChanged() }.frame(minWidth:620,minHeight:520).background(NashiPalette.canvas).tint(.nashi).buttonStyle(NashiButtonStyle(.secondary,compact:true))
     }
+    @AppStorage("appLanguage") private var language="en"
     func details(_ info:WebMediaInfo)->String {
-        var details=[info.site,info.kind.rawValue.capitalized]
-        if !info.photos.isEmpty { details.append("\(info.photos.count) \(info.photos.count==1 ? "photo":"photos")") }
+        var details=[info.site,AppLocalization.text(info.kind.rawValue.capitalized,language:language)]
+        if !info.photos.isEmpty { details.append(AppLocalization.text(info.photos.count==1 ? "1 photo":"\(info.photos.count) photos",language:language)) }
         if let width=info.imageWidth,let height=info.imageHeight { details.append("\(width) × \(height)") }
         if let duration=info.duration { details.append("\(Int(duration)/60):\(String(format:"%02d",Int(duration)%60))") }
         if let height=info.heights.max() { details.append("\(height)p") }

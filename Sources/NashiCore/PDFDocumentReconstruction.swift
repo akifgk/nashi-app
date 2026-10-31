@@ -141,7 +141,7 @@ enum PDFDocumentReconstruction {
         for index in 0..<pdf.pageCount {
             try token.check()
             guard let page = pdf.page(at: index) else { continue }
-            let box = page.bounds(for: .mediaBox)
+            let box = page.bounds(for: .cropBox)
             // A fixed half-inch margin consumes most of a small PDF page.
             // Cap the ordinary margin while reserving at least 90% of a small
             // page's narrow dimension for editable content.
@@ -286,7 +286,7 @@ enum PDFDocumentReconstruction {
             // Editable output has a white page, without the source's vector
             // background. Light PDF text must not become invisible on that page.
             if 1.05 / (luminance + 0.05) < 3 { return "#202020" }
-            return String(format: "#%02X%02X%02X", Int(components[0] * 255), Int(components[1] * 255), Int(components[2] * 255))
+            return String(format: "#%02X%02X%02X", Int((components[0] * 255).rounded()), Int((components[1] * 255).rounded()), Int((components[2] * 255).rounded()))
         } ?? "#000000"
         return TextStyle(family: family, size: (Double(font.pointSize) * 10).rounded() / 10, bold: traits.contains(.bold), italic: traits.contains(.italic), underline: (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0, color: hex)
     }
@@ -305,7 +305,7 @@ enum PDFPlacedImages {
         let scanner = Scanner(content: content, resources: resources, transform: .identity, token: token, depth: 0)
         scanner.scan()
         try token.check()
-        let pageBounds = page.bounds(for: .mediaBox)
+        let pageBounds = page.bounds(for: .cropBox)
         var result: [CGRect] = []
         for rect in scanner.images {
             let clipped = rect.intersection(pageBounds)

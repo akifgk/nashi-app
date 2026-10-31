@@ -119,7 +119,7 @@ struct ToolEditor:View {
                 }
                 ScrollView {
                     VStack(alignment:.leading,spacing:18) {
-                        Text(sideBySide ? L10n.text("MAKE IT YOURS"):"\(inputs.count>1 ? "\(inputs.count) FILES":input?.lastPathComponent ?? "")").font(.system(size:10,weight:.bold,design:.rounded)).tracking(0.8).foregroundStyle(.secondary).lineLimit(2)
+                        Text(verbatim:sideBySide ? L10n.text("MAKE IT YOURS"):inputs.count>1 ? L10n.uppercase("\(inputs.count) files"):input?.lastPathComponent ?? "").font(.system(size:10,weight:.bold,design:.rounded)).tracking(0.8).foregroundStyle(.secondary).lineLimit(2)
                         if isLoading { ProgressView("Preparing your file…").font(.caption) }
                         controls.disabled(isLoading || !readyToApply)
                         if let previewError { HStack { LText(previewError).font(.callout).foregroundStyle(.orange);Spacer();Button { self.previewError=nil } label:{Image(systemName:"xmark")}.accessibilityLabel("Dismiss preview error") } }
@@ -318,7 +318,7 @@ struct ToolEditor:View {
     var dimensionFields:some View { HStack { number("W",value:$width);number("H",value:$height);Text("px").foregroundStyle(.secondary) } }
     var imageControls:some View {
         VStack(alignment:.leading,spacing:12) {
-            HStack { Toggle("Show Original",isOn:$showOriginal).toggleStyle(.button);Spacer();Button("−") { previewZoom=max(0.25,previewZoom/1.25) };Text("\(Int(previewZoom*100))%").font(.caption.monospacedDigit());Button("+") { previewZoom=min(4,previewZoom*1.25) };Button("Fit") { previewZoom=1 } }
+            HStack { Toggle("Show Original",isOn:$showOriginal).toggleStyle(.button);Spacer();Button("−") { previewZoom=max(0.25,previewZoom/1.25) };Text(Int(previewZoom*100),format:.percent).font(.caption.monospacedDigit());Button("+") { previewZoom=min(4,previewZoom*1.25) };Button("Fit") { previewZoom=1 } }
             HStack { Button("Rotate Left") { options.rotation-=90;swap(&width,&height) };Button("Rotate Right") { options.rotation+=90;swap(&width,&height) };Toggle("Flip",isOn:$options.flipHorizontal) }
             dimensionFields
             Group {
@@ -382,7 +382,7 @@ struct ToolEditor:View {
             slider("Padding",value:Binding(get:{Double(options.imageFrame?.padding ?? 160)},set:{var f=options.imageFrame ?? .init();f.padding=Int($0);options.imageFrame=f}),range:0...400,unit:"px")
             slider("Corners",value:frame(\.cornerRadius),range:0...100,unit:"px")
             slider("Shadow",value:frame(\.shadowRadius),range:0...80,unit:"px")
-            HStack { ForEach(["Auto","1:1","16:9","4:5"],id:\.self) { label in Button(label) { var f=options.imageFrame ?? .init();let a=label.split(separator:":").compactMap{Double($0)};f.aspectRatio=a.count==2 ? a[0]/a[1]:nil;options.imageFrame=f } } }
+            HStack { ForEach(["Auto","1:1","16:9","4:5"],id:\.self) { label in Button(LocalizedStringKey(label)) { var f=options.imageFrame ?? .init();let a=label.split(separator:":").compactMap{Double($0)};f.aspectRatio=a.count==2 ? a[0]/a[1]:nil;options.imageFrame=f } } }
         }
     }
     var collageControls:some View {
@@ -392,7 +392,7 @@ struct ToolEditor:View {
             Picker("Canvas",selection:collage(\.aspectRatio)) { Text("Square · 1:1").tag(1.0);Text("Landscape · 16:9").tag(16.0/9);Text("Portrait · 9:16").tag(9.0/16);Text("Portrait · 4:5").tag(4.0/5) }
             number("Canvas width",value:collage(\.width))
             Picker("Image fit",selection:collage(\.imageFit)) { Text("Fill cells (crop edges)").tag(ImageFit.fill);Text("Fit whole image").tag(ImageFit.fit) }
-            number("Spacing",value:collage(\.spacing));number("Outer padding",value:collage(\.outerPadding));slider("Corners",value:collage(\.cornerRadius),range:0...100)
+            number("Spacing",value:collage(\.spacing));number("Outer padding",value:collage(\.outerPadding));slider("Corners",value:collage(\.cornerRadius),range:0...100,reset:CollageOptions().cornerRadius)
             ColorPicker("Background",selection:colorBinding(collage(\.backgroundColor),preservingOpacity:true))
             HStack { Button("Background Image…") { let panel=NSOpenPanel();if panel.runModal() == .OK { var c=options.collage ?? .init();c.backgroundImage=panel.url;options.collage=c } };if options.collage?.backgroundImage != nil { Button("Remove Image") { var c=options.collage ?? .init();c.backgroundImage=nil;options.collage=c } } }
             orderControls
@@ -454,11 +454,11 @@ struct ToolEditor:View {
             Text("\(index+1)").foregroundStyle(.secondary).frame(width:20);Image(nsImage:NSWorkspace.shared.icon(forFile:url.path)).resizable().frame(width:28,height:28);Text(url.lastPathComponent).lineLimit(1);Spacer()
             Button { inputs.swapAt(index,index-1) } label:{Image(systemName:"chevron.up")}.disabled(index==0)
             Button { inputs.swapAt(index,index+1) } label:{Image(systemName:"chevron.down")}.disabled(index==inputs.count-1)
-        } } }
+        } } }.disabled(state.working)
     }
     var pdfControls:some View {
         VStack(alignment:.leading,spacing:14) {
-            LazyVGrid(columns:[GridItem(.adaptive(minimum:110))],spacing:14) { ForEach(Array(pdfEditor.pages.enumerated()),id:\.offset) { index,page in VStack { Image(nsImage:page.thumbnail(of:NSSize(width:100,height:140),for:.mediaBox)).resizable().scaledToFit().frame(height:140);Text("\(index+1)").font(.caption) }.padding(8).background(pdfEditor.selectedPage==index ? Color.nashi.opacity(0.2):Color.primary.opacity(0.03)).cornerRadius(8).onTapGesture{pdfEditor.select(index)} } }
+            LazyVGrid(columns:[GridItem(.adaptive(minimum:110))],spacing:14) { ForEach(Array(pdfEditor.pages.enumerated()),id:\.offset) { index,page in VStack { Image(nsImage:page.thumbnail(of:NSSize(width:100,height:140),for:.cropBox)).resizable().scaledToFit().frame(height:140);Text("\(index+1)").font(.caption) }.padding(8).background(pdfEditor.selectedPage==index ? Color.nashi.opacity(0.2):Color.primary.opacity(0.03)).cornerRadius(8).onTapGesture{pdfEditor.select(index)} } }
             HStack {
                 Button("Rotate") { pdfEditor.rotateSelected() }.disabled(!pdfEditor.hasSelection)
                 Button("Duplicate") { pdfEditor.duplicateSelected() }.disabled(!pdfEditor.hasSelection)
@@ -665,7 +665,7 @@ struct ToolEditor:View {
             applied.metadataRemoveAll=metadataRemoveAll
             if usesImageMetadata { var edit=ImageMetadataOptions();edit.removeAll=metadataRemoveAll;edit.updates=metadata.filter{originalMetadata[$0.key] != $0.value};edit.removals=metadataRemoveAll ? []:originalMetadata.keys.filter{metadata[$0]==nil};applied.imageMetadata=edit }
         }
-        state.execute(.tool(tool),options:applied,inputs:inputs)
+        previewError=nil;state.execute(.tool(tool),options:applied,inputs:inputs)
     }
     func saveOrganizedPDF() {
         guard canApply,!pdfEditor.pages.isEmpty else { return }
@@ -674,7 +674,7 @@ struct ToolEditor:View {
     }
     func detectRedactions(faces:Bool) {
         guard let input,readyToApply,!isLoading else { return }
-        let generation=editorGeneration,token=previewToken
+        let generation=editorGeneration,token=previewToken;previewError=nil
         Task { do {
             let regions=try await Task.detached { try ImageEngine.recognizedRegions(input,faces:faces,text:!faces) }.value
             try checkGeneration(generation,token:token);options.redactions += regions.map(\.rect)
@@ -704,15 +704,19 @@ struct ToolEditor:View {
     }
     func setCrop(_ rect:EditRect) {
         var r=rect
-        r.x=r.x.rounded(.down);r.y=r.y.rounded(.down)
-        r.width=r.width.rounded(.down);r.height=r.height.rounded(.down)
+        // Whole pixels, rounded down, except that floating-point noise just under an
+        // integer (a locked ratio's 0.9999999999999999) keeps that integer.
+        func pixels(_ v:Double)->Double { let n=v.rounded();return abs(v-n)<1e-6 ? n:v.rounded(.down) }
+        r.x=pixels(r.x);r.y=pixels(r.y)
+        r.width=max(1,pixels(r.width));r.height=max(1,pixels(r.height))
         options.crop=r;width=Int(r.width);height=Int(r.height)
     }
     func previewChannel(_ channel:Int) {
-        guard let input,readyToApply,!isLoading else { return };let settings=options,token=previewToken,generation=editorGeneration
+        guard let input,readyToApply,!isLoading else { return };let settings=options,token=previewToken,generation=editorGeneration,key=previewKey
         Task { do {
             let url=try await Task.detached { try MediaEngine.previewChannel(input,channel:channel,options:settings,token:token) }.value
-            guard generation==editorGeneration,!token.isCancelled else { try? FileManager.default.removeItem(at:url.deletingLastPathComponent());return }
+            // A setting changed while the preview was being made: it no longer shows the current settings.
+            guard generation==editorGeneration,!token.isCancelled,key==previewKey else { try? FileManager.default.removeItem(at:url.deletingLastPathComponent());return }
             player?.pause();if let old=channelPreviewURL { try? FileManager.default.removeItem(at:old.deletingLastPathComponent()) };channelPreviewURL=url;playerReachedEnd=false;player=AVPlayer(url:url);processedPlayback=true;player?.play()
         } catch { if generation==editorGeneration,!token.isCancelled { previewError=error.localizedDescription } } }
     }
@@ -761,7 +765,7 @@ struct ToolEditor:View {
         guard options.start.isFinite,end.isFinite,options.start>=0,end>options.start,end<=duration else {
             previewError="Choose a valid start and end within the file’s duration.";return
         }
-        seek(options.start);playingRange=true;player?.play()
+        previewError=nil;seek(options.start);playingRange=true;player?.play()
     }
     func updatePlayhead(_ time:Double) {
         guard time.isFinite,!seeking else { return }
@@ -794,15 +798,17 @@ struct ToolEditor:View {
     }
     func playOriginal(play:Bool=true) { processedPlayback=false;processedWaveform=nil;processedDuration=nil;if let url=playbackURL ?? input { let time=playhead;player?.pause();player=AVPlayer(url:url);seek(time);if play { if time>=duration-0.001 { seek(0) };player?.play() } } }
     func processedPreview() {
-        guard let input,readyToApply,!isLoading else { return };var settings=options;let kind=tool,token=previewToken,generation=editorGeneration
+        guard let input,readyToApply,!isLoading else { return };var settings=options;let kind=tool,token=previewToken,generation=editorGeneration,key=previewKey
         if kind == .splitVideo { settings.joinSplitClips=true }
         previewBusy=true
         Task { do {
             let preview=try await MediaPreviewEngine.processedPreview(kind,input:input,options:settings,token:token)
             guard generation==editorGeneration,!token.isCancelled else { preview.removeTemporaryFiles();return }
+            // A setting changed while the preview was being made: it no longer shows the current settings.
+            guard key==previewKey else { preview.removeTemporaryFiles();previewBusy=false;return }
             processedDuration=(try? MediaEngine.inspect(preview.playbackURL).duration)
             player?.pause();if let old=channelPreviewURL { try? FileManager.default.removeItem(at:old.deletingLastPathComponent()) };channelPreviewURL=preview.playbackURL;playerReachedEnd=false;player=AVPlayer(url:preview.playbackURL);processedPlayback=true;player?.play()
-            if kind == .normalizeAudio { let url=preview.playbackURL;let peaks=try await Task.detached { try MediaPreviewEngine.waveformPeaks(url,token:token) }.value;try checkGeneration(generation,token:token);processedWaveform=peaks }
+            if kind == .normalizeAudio { let url=preview.playbackURL;let peaks=try await Task.detached { try MediaPreviewEngine.waveformPeaks(url,token:token) }.value;try checkGeneration(generation,token:token);if key==previewKey { processedWaveform=peaks } }
         } catch { if generation==editorGeneration,!token.isCancelled { previewError=error.localizedDescription } }
             if generation==editorGeneration,!token.isCancelled { previewBusy=false }
         }
@@ -830,7 +836,7 @@ struct ToolEditor:View {
     func collage<T>(_ key:WritableKeyPath<CollageOptions,T>)->Binding<T> { Binding(get:{(options.collage ?? .init())[keyPath:key]},set:{var value=options.collage ?? .init();value[keyPath:key]=$0;options.collage=value}) }
     func relative(_ value:Binding<Double>)->Binding<Double> { Binding(get:{value.wrappedValue-1},set:{value.wrappedValue=$0+1}) }
     func number(_ label:String,value:Binding<Int>)->some View { HStack { Text(label);TextField("",value:value,format:.number).textFieldStyle(.roundedBorder).frame(minWidth:60) } }
-    func slider(_ title:String,value:Binding<Double>,range:ClosedRange<Double>,unit:String="")->some View { HStack { LText(title).font(.callout).frame(width:105,alignment:.leading);Slider(value:value,in:range).tint(.nashi);Text("\(value.wrappedValue,specifier:"%.2f") \(unit)").font(.caption.monospacedDigit()).frame(width:70,alignment:.trailing);Button { value.wrappedValue=["Playback speed":1,"Target loudness":-16,"Loudness range":11,"True peak limit":-1.5,"Left volume":1,"Right volume":1,"Padding":160,"Corners":24,"Shadow":24,"Stroke width":3,"Text size":24][title] ?? 0 } label:{Image(systemName:"arrow.counterclockwise").font(.caption)}.buttonStyle(.plain) } }
+    func slider(_ title:String,value:Binding<Double>,range:ClosedRange<Double>,unit:String="",reset:Double?=nil)->some View { HStack { LText(title).font(.callout).frame(width:105,alignment:.leading);Slider(value:value,in:range).tint(.nashi);Text("\(value.wrappedValue,specifier:"%.2f") \(unit)").font(.caption.monospacedDigit()).frame(width:70,alignment:.trailing);Button { value.wrappedValue=reset ?? ["Playback speed":1,"Target loudness":-16,"Loudness range":11,"True peak limit":-1.5,"Left volume":1,"Right volume":1,"Padding":160,"Corners":24,"Shadow":24,"Stroke width":3,"Text size":24,"Silence threshold":-50][title] ?? 0 } label:{Image(systemName:"arrow.counterclockwise").font(.caption)}.buttonStyle(.plain) } }
     func colorBinding(_ string:Binding<String>,preservingOpacity:Bool=false)->Binding<Color> {
         Binding(get:{Color(cgColor:ImageEngine.color(string.wrappedValue))},set:{
             string.wrappedValue=preservingOpacity ? ImageColorCodec.backgroundHex(NSColor($0)):hex($0)
@@ -839,7 +845,10 @@ struct ToolEditor:View {
     func hex(_ color:Color)->String { guard let rgb=NSColor(color).usingColorSpace(.sRGB) else{return "#FFFFFF"};return String(format:"#%02X%02X%02X",Int(rgb.redComponent*255),Int(rgb.greenComponent*255),Int(rgb.blueComponent*255)) }
     func timeLabel(_ time:Double)->String {
         guard time.isFinite,time>=0,time<Double(Int.max) else { return "—" }
-        return String(format:"%02ld:%06.3f",Int(time)/60,time.truncatingRemainder(dividingBy:60))
+        // Round to the displayed millisecond first so 59.9996 carries into the minute.
+        let rounded=(time*1000).rounded()/1000
+        guard rounded<Double(Int.max) else { return "—" }
+        return String(format:"%02ld:%06.3f",Int(rounded)/60,rounded.truncatingRemainder(dividingBy:60))
     }
 }
 

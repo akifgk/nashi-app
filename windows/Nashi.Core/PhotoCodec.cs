@@ -83,7 +83,10 @@ public static class PhotoCodec
         if(o.Hue!=0)image.Modulate(new Percentage(100),new Percentage(100),new Percentage(100+o.Hue/1.8));
         if(o.Dehaze!=0)image.BrightnessContrast(new Percentage(-o.Dehaze*8),new Percentage(o.Dehaze*25));
         if(o.NoiseReduction>0)image.MedianFilter((uint)Math.Clamp(Math.Ceiling(o.NoiseReduction*2),1,3));
-        if(o.Blur>0)image.GaussianBlur(Math.Min(50,o.Blur));
+        // Blur is the Gaussian standard deviation, like macOS CIGaussianBlur's radius.
+        // GaussianBlur(radius) keeps sigma at 1 (barely blurred, still readable when
+        // redacting) and its 2-D kernel is far slower than the separable Blur.
+        if(o.Blur>0)image.Blur(0,Math.Min(50,o.Blur));
         if(o.Sharpen>0||o.Clarity>0||o.Texture>0)image.UnsharpMask(0,1+Math.Max(0,o.Clarity)*3,Math.Max(0,o.Sharpen)+Math.Max(0,o.Texture),.02);
         if(o.Grain>0)image.AddNoise(NoiseType.Gaussian,Math.Min(1,o.Grain)*.15,Channels.RGB);
         if(o.Vignette>0)image.Vignette(0,Math.Max(1,Math.Min(image.Width,image.Height)*o.Vignette*.25),0,0);

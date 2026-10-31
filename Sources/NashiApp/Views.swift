@@ -145,7 +145,7 @@ struct SettingsView:View {
             DisclosureGroup("Additional options") { VStack(alignment:.leading,spacing:13) {
                 Toggle("Enable Nashi",isOn:$enabled)
                 Toggle("Reveal finished files in Finder",isOn:$reveal)
-                HStack { Text("Wheel size");Slider(value:$wheelScale,in:0.85...1.4).frame(width:230);Text("\(Int(wheelScale*100))%").monospacedDigit().frame(width:40) }
+                HStack { Text("Wheel size");Slider(value:$wheelScale,in:0.85...1.4).frame(width:230);Text(Int(wheelScale*100),format:.percent).monospacedDigit().frame(width:40) }
             }.padding(.top,12) }
         }.padding(26).frame(maxWidth:680) }.frame(maxWidth:.infinity)
     }
