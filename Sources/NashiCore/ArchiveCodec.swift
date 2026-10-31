@@ -149,7 +149,10 @@ enum ArchiveCodec {
         guard let writer = a.writeNew() else { throw NashiError.failed("Could not initialize the archive writer.") }
         defer { _ = a.writeFree(writer) }
         switch format {
-        case "zip": try a.check(a.writeZIP(writer), handle: writer)
+        case "zip":
+            try a.check(a.writeZIP(writer), handle: writer)
+            // Without this, UTF-8 names lack the ZIP UTF-8 flag and other systems read them as CP437.
+            try a.check(a.writeOptions(writer, "zip:hdrcharset=UTF-8"), handle: writer)
         case "tar": try a.check(a.writeTar(writer), handle: writer)
         case "gz", "gzip", "tgz":
             try a.check(a.writeTar(writer), handle: writer)

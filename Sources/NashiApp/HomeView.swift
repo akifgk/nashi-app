@@ -94,7 +94,7 @@ struct HomeView:View {
                     Text("Your Library").font(.system(size:30,weight:.bold,design:.rounded))
                     Text("Freshly made, pasted, and ready for another round.").font(.callout).foregroundStyle(.secondary)
                     TextField("Find a file or tool · ⌘F",text:$state.libraryQuery).textFieldStyle(.roundedBorder).focused($librarySearchFocused)
-                    if let error=state.error {HStack{Label(error,systemImage:"exclamationmark.circle").font(.caption).foregroundStyle(.orange);Spacer();Button("Dismiss"){state.error=nil}.buttonStyle(NashiButtonStyle(.quiet,compact:true))}}
+                    if let error=state.error {HStack{Label { LText(error) } icon:{ Image(systemName:"exclamationmark.circle") }.font(.caption).foregroundStyle(.orange);Spacer();Button("Dismiss"){state.error=nil}.buttonStyle(NashiButtonStyle(.quiet,compact:true))}}
                     if state.filteredHistory.isEmpty {LText(state.history.isEmpty ? "Nothing here yet. Paste something or make your first fresh copy.":"No matches. Try a file name or tool.").foregroundStyle(.secondary).padding(20)}
                     ForEach(state.filteredHistory) {job in
                         RecentFileRow(job:job,canReuse:!state.working,onPreview:{state.preview(job)},onReuse:{urls in guard !state.working else{return};state.inputs=urls;state.libraryVisible=false})
@@ -252,7 +252,7 @@ private struct RecentFileRow:View {
             if let first=urls.first { AsyncFileArtwork(url:first).frame(width:29,height:29).padding(5).background(NashiPalette.inset,in:RoundedRectangle(cornerRadius:11)) }
             VStack(alignment:.leading,spacing:4) {
                 Text(urls.first?.lastPathComponent ?? job.title).font(.system(size:12,weight:.semibold)).lineLimit(1)
-                HStack(spacing:3) { if available.isEmpty { Text("Moved or removed") } else { LText(job.title);Text("· "+job.date.formatted(.relative(presentation:.named))) } }.font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
+                HStack(spacing:3) { if available.isEmpty { Text("Moved or removed") } else { LText(job.title);Text("· \(job.date,format:.relative(presentation:.named))") } }.font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
             if urls.count>1 { Text("\(urls.count) files").font(.caption2).foregroundStyle(.secondary) }

@@ -186,7 +186,7 @@ private enum PagesDOCXReader {
         let defaultParagraph = paragraph(defaults?.first("pPrDefault")?.first("pPr"))
         let relationships = try relationMap(package.appendingPathComponent("word/_rels/document.xml.rels"))
         let reader = Reader(package: package, relationships: relationships, styles: styles, defaultCharacter: defaultCharacter, defaultParagraph: defaultParagraph, token: token)
-        var model: [String: Any] = ["blocks": try blockElements(body).compactMap { try reader.block($0) }]
+        var model: [String: Any] = ["blocks": try blockElements(body).flatMap { try reader.blocks($0) }]
         if let section = body.first("sectPr") {
             var page: [String: Any] = [:]
             if let size = section.first("pgSz") { if let w = size.number("w") { page["pageWidth"] = w / 20 }; if let h = size.number("h") { page["pageHeight"] = h / 20 } }
@@ -214,14 +214,27 @@ private enum PagesDOCXReader {
                 let properties = element.first("pPr")
                 let base = resolved(properties?.first("pStyle")?.attr("val"))
                 var runs: [[String:Any]] = []
+                // Open complex fields (fldChar begin ... end); a HYPERLINK
+                // field links its result runs once its instruction is complete.
+                var fields: [(instruction: String, link: String?)] = []
                 func visit(_ item: XMLElement, link: String? = nil) throws {
                     try token.check()
                     if item.local == "r" {
                         let runBase = item.first("rPr")?.first("rStyle")?.attr("val").map {resolved($0).0} ?? [:]
                         let formatting = base.0.merging(runBase) { _,new in new }.merging(character(item.first("rPr"))) { _,new in new }
                         for child in item.elements(nil) {
-                            if child.local == "t" { var run: [String:Any] = ["text":text(child),"character":formatting];if let link {run["link"]=link};runs.append(run) }
+                            if child.local == "fldChar" {
+                                switch child.attr("fldCharType") {
+                                case "begin": fields.append(("", nil))
+                                case "separate": if !fields.isEmpty { fields[fields.count-1].link = hyperlinkField(fields[fields.count-1].instruction) }
+                                case "end": _ = fields.popLast()
+                                default: break
+                                }
+                            }
+                            else if child.local == "instrText", !fields.isEmpty { fields[fields.count-1].instruction += text(child) }
+                            else if child.local == "t" { var run: [String:Any] = ["text":text(child),"character":formatting];if let link = link ?? fields.last(where: { $0.link != nil })?.link {run["link"]=link};runs.append(run) }
                             else if child.local == "tab" { runs.append(["text":"\t","character":formatting]) }
+                            else if child.local == "br", child.attr("type") == "page" { runs.append(["type":"pageBreak"]) }
                             else if child.local == "br" || child.local == "cr" { runs.append(["text":"\n","character":formatting]) }
                             else if ["drawing","pict"].contains(child.local), let image = try image(child) { runs.append(image) }
                         }
@@ -230,7 +243,7 @@ private enum PagesDOCXReader {
                         // Word keeps a URL's #fragment in w:anchor, not in the relationship target.
                         if let target = destination, !target.contains("#"), let anchor = item.attr("anchor")?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed), !anchor.isEmpty { destination = target + "#" + anchor }
                         for child in item.elements(nil) { try visit(child, link:destination) }
-                    } else if ["sdt","sdtContent","ins","smartTag"].contains(item.local) { for child in item.elements(nil) { try visit(child, link:link) } }
+                    } else if ["sdt","sdtContent","ins","smartTag","fldSimple","customXml","moveTo","dir","bdo"].contains(item.local) { for child in item.elements(nil) { try visit(child, link:link) } }
                 }
                 for child in element.elements(nil) { try visit(child) }
                 // An empty paragraph has no run from which to recover its font.
@@ -302,6 +315,21 @@ private enum PagesDOCXReader {
             }
             return nil
         }
+        /// A manual page break splits a Word paragraph: Pages has no inline page
+        /// break, so the text after it becomes a paragraph that starts a new page.
+        func blocks(_ element: XMLElement) throws -> [[String: Any]] {
+            guard let block = try block(element) else { return [] }
+            guard let runs = block["runs"] as? [[String:Any]], runs.contains(where: { $0["type"] as? String == "pageBreak" }) else { return [block] }
+            var segments: [[[String:Any]]] = [[]]
+            for run in runs { if run["type"] as? String == "pageBreak" { segments.append([]) } else { segments[segments.count-1].append(run) } }
+            let paragraph = block["paragraph"] as? [String:Any] ?? [:]
+            return segments.enumerated().map { index, segment in
+                var part = block
+                part["runs"] = segment
+                if index > 0 { part["paragraph"] = paragraph.merging(["pageBreakBefore":true]) { _,new in new } }
+                return part
+            }
+        }
         func localPath(_ relative: String) -> URL? {
             guard URL(string:relative)?.scheme == nil else { return nil }
             let path = package.appendingPathComponent("word").appendingPathComponent(relative).standardizedFileURL
@@ -339,6 +367,32 @@ private enum PagesDOCXReader {
         let raw=element.xmlString
         guard let open=raw.firstIndex(of:">"),let close=raw.lastIndex(of:"<"),open<close else{return ""}
         return DocumentText.decodeEntities(String(raw[raw.index(after:open)..<close]))
+    }
+    /// The external target of a `HYPERLINK "url" [\o "tip"] [\l "bookmark"]`
+    /// field instruction; bookmark-only links have no URL in the Pages model.
+    static func hyperlinkField(_ instruction: String) -> String? {
+        var tokens: [(value: String, quoted: Bool)] = [], index = instruction.startIndex
+        while index < instruction.endIndex {
+            if instruction[index].isWhitespace { index = instruction.index(after: index); continue }
+            if instruction[index] == "\"" {
+                let start = instruction.index(after: index)
+                let end = instruction[start...].firstIndex(of: "\"") ?? instruction.endIndex
+                tokens.append((String(instruction[start..<end]), true))
+                index = end < instruction.endIndex ? instruction.index(after: end) : end
+            } else {
+                let end = instruction[index...].firstIndex(where: \.isWhitespace) ?? instruction.endIndex
+                tokens.append((String(instruction[index..<end]), false))
+                index = end
+            }
+        }
+        guard tokens.first.map({ !$0.quoted && $0.value.uppercased() == "HYPERLINK" }) == true else { return nil }
+        var position = 1
+        while position < tokens.count {
+            let token = tokens[position]
+            if !token.quoted, token.value.hasPrefix("\\") { position += ["\\l","\\o","\\t"].contains(token.value.lowercased()) ? 2 : 1; continue }
+            return token.value.isEmpty ? nil : token.value
+        }
+        return nil
     }
     /// Block-level content controls and custom XML only wrap ordinary paragraphs and tables.
     static func blockElements(_ parent: XMLElement) -> [XMLElement] {

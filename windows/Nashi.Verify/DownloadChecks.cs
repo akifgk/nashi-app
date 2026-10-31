@@ -54,6 +54,17 @@ internal static class DownloadChecks
         finally{secret.Stop();}
         foreach(var name in new[]{"http://127.1/a","http://2130706433/a","http://0x7f.1/a","http://167772161/a"})try{WebDownload.Validate(name);check(false,"Short or numeric loopback form accepted: "+name);}catch(ArgumentException){check(true,"Short and numeric IPv4 forms of private addresses are refused");}
         foreach(var name in new[]{"http://localhost./a","http://app.localhost./a","http://printer.local./a"})try{WebDownload.Validate(name);check(false,"Trailing-dot local name accepted: "+name);}catch(ArgumentException){check(true,"Trailing-dot local names are refused");}
+        var culture=System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            foreach(var name in new[]{"en-US","tr-TR","de-DE"})
+            {
+                System.Globalization.CultureInfo.CurrentCulture=new(name);
+                check(WebDownload.ProgressFraction("NASHI:524288:1048576.0")==.5&&WebDownload.ProgressFraction("NASHI:1048576:1048576.0")==.98,$"yt-dlp progress parsed differently under {name}");
+            }
+            check(WebDownload.ProgressFraction("NASHI:12:NA") is null&&WebDownload.ProgressFraction("NASHI:1:0") is null&&WebDownload.ProgressFraction("[download] 5%") is null&&WebDownload.ProgressFraction("NASHI:NaN:1048576.0") is null&&WebDownload.ProgressFraction("NASHI:5:NaN") is null&&WebDownload.ProgressFraction("NASHI:5:Infinity") is null,"Unusable yt-dlp progress lines must be ignored");
+        }
+        finally{System.Globalization.CultureInfo.CurrentCulture=culture;}
         var uri=new Uri("https://download.example/fixture");var output=Path.Combine(root,"Download.bin");var bytes=new byte[]{1,2,3};
         HttpResponseMessage Response(HttpRequestMessage request,HttpContent? content=null)=>new(HttpStatusCode.OK){RequestMessage=request,Content=content??new ByteArrayContent(bytes)};
         using(var handler=new Handler((request,n)=>n==1?throw new HttpRequestException("Transient connection failure"):Response(request))){await VerifiedDownload.FetchForTest(uri,output,10,null,CancellationToken.None,handler,TimeSpan.FromSeconds(1));check(handler.Calls==2&&File.ReadAllBytes(output).SequenceEqual(bytes),"Interrupted download did not retry safely");File.Delete(output);}

@@ -127,13 +127,16 @@ public enum MediaEngine {
         var arguments = ["-i", input.path]
         if audioFormats.contains(ext) {
             try requireAudio(info)
-            arguments += ["-map", "0:a:0", "-vn"] + audioEncoding(ext, quality: options.quality, bitrate: options.audioBitrate * 1000, source: info.audio, pcmCodec: try pcmCodec(for: ext, source: info.audio, setting: options.audioSampleDepth), compressionPreset: options.compressionPreset)
+            // Album art is an attached picture stream, not a tag; keep it where the container stores JPEG/PNG art.
+            let artwork = options.preserveMetadata && ["mp3", "m4a", "flac"].contains(ext) ? info.streams.first { $0.isAttachedPicture && ["mjpeg", "png"].contains($0.codec) } : nil
+            arguments += ["-map", "0:a:0"] + (artwork.map { ["-map", "0:\($0.index)", "-c:v", "copy"] } ?? ["-vn"]) + audioEncoding(ext, quality: options.quality, bitrate: options.audioBitrate * 1000, source: info.audio, pcmCodec: try pcmCodec(for: ext, source: info.audio, setting: options.audioSampleDepth), compressionPreset: options.compressionPreset)
         } else {
             try requireVideo(info)
             arguments += ["-map", "0:v:0"]
             if ext == "gif" {
                 let scale = try scalingFilter(options)
-                let first = (["fps=\(options.gifFrameRate)"] + (scale.map { [$0] } ?? []) + ["scale=w='min(\(options.gifMaxWidth),iw)':h=-2:force_original_aspect_ratio=decrease"]).joined(separator: ",")
+                // GIF viewers ignore a pixel aspect, so non-square pixels are resized to their displayed shape.
+                let first = (["fps=\(options.gifFrameRate)"] + (scale.map { [$0] } ?? []) + ["scale=w='min(\(options.gifMaxWidth),iw)':h=-2:force_original_aspect_ratio=decrease:reset_sar=1"]).joined(separator: ",")
                 arguments += ["-filter_complex", "[0:v:0]\(first),split[p0][p1];[p0]palettegen=stats_mode=diff[pal];[p1][pal]paletteuse=dither=sierra2_4a", "-an", "-loop", "0"]
                 // Complex filters map their final output automatically.
                 arguments.removeSubrange(2..<4)
@@ -143,8 +146,11 @@ public enum MediaEngine {
                 arguments += videoEncoding(ext, quality: options.quality, audioBitrate: options.audioBitrate * 1000, sourceAudio: info.audio)
             }
         }
-        if options.preserveMetadata { arguments += ["-map_metadata", "0"] }
-        else { arguments += ["-map_metadata", "-1", "-map_metadata:s", "-1", "-map_chapters", "-1"] }
+        if options.preserveMetadata {
+            arguments += ["-map_metadata", "0"]
+            // Ogg keeps Vorbis/Opus comments on the audio stream; other containers write file-level tags.
+            if info.format.split(separator: ",").contains("ogg"), info.audio?.metadata.isEmpty == false { arguments += ["-map_metadata", "0:s:a:0"] }
+        } else { arguments += ["-map_metadata", "-1", "-map_metadata:s", "-1", "-map_chapters", "-1"] }
         arguments += metadataArguments(options.metadata)
         try render(arguments, to: output, token: token, duration: info.duration, progress: progress)
         return [output]
@@ -284,9 +290,14 @@ public enum MediaEngine {
             let clip = temp.appendingPathComponent("clip-\(index).mp4")
             var arguments = ["-i", input.path]
             if audio && !infos[index].hasAudio { arguments += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"] }
-            arguments += ["-map", "0:v:0", "-vf", "scale=\(width):\(height):force_original_aspect_ratio=decrease,pad=\(width):\(height):(ow-iw)/2:(oh-ih)/2,setsar=1,fps=\(decimal(fps)),setpts=PTS-STARTPTS"]
+            // Fitting keeps the stored width/height ratio and setsar=1 then drops the pixel aspect,
+            // so anamorphic clips are first scaled to square pixels to keep their display shape.
+            arguments += ["-map", "0:v:0", "-vf", "scale=trunc(iw*sar/2)*2:ih,setsar=1,scale=\(width):\(height):force_original_aspect_ratio=decrease,pad=\(width):\(height):(ow-iw)/2:(oh-ih)/2,setsar=1,fps=\(decimal(fps)),setpts=PTS-STARTPTS"]
             if audio { arguments += ["-map", infos[index].hasAudio ? "0:a:0" : "1:a:0", "-af", "aresample=48000,asetpts=PTS-STARTPTS", "-ac", "2", "-ar", "48000"] } else { arguments += ["-an"] }
-            arguments += ["-t", decimal(infos[index].duration)] + videoEncoding("mp4", quality: options.quality)
+            // An unknown duration is 0, and `-t 0` would encode an empty clip. The clip's own
+            // video then bounds the generated silence instead.
+            let silent = audio && !infos[index].hasAudio
+            arguments += (infos[index].duration > 0 ? ["-t", decimal(infos[index].duration)] : silent ? ["-shortest"] : []) + videoEncoding("mp4", quality: options.quality)
             try render(arguments, to: clip, token: token, duration: infos[index].duration, progress: { value,_ in progress(OperationProgress.map(value, from: Double(index)/Double(inputs.count)*0.95, to: Double(index+1)/Double(inputs.count)*0.95),"Joining clip \(index+1) of \(inputs.count)…") })
             clips.append(clip)
         }
@@ -306,7 +317,8 @@ public enum MediaEngine {
             for (index, time) in options.snapshotTimes.enumerated() {
                 guard time.isFinite, time >= 0, info.duration <= 0 || time < info.duration else { throw NashiError.invalidInput("A snapshot time is outside the video.") }
                 let out = try outputURL(input, ext: "png", suffix: " Frame \(index + 1)", options: options)
-                try render(["-ss", decimal(time), "-i", input.path, "-map", "0:v:0", "-frames:v", "1", "-update", "1", "-c:v", "png"], to: out, token: token)
+                // Image viewers ignore a PNG pixel aspect, so non-square pixels are resized to their displayed shape.
+                try render(["-ss", decimal(time), "-i", input.path, "-map", "0:v:0", "-frames:v", "1", "-update", "1", "-vf", "scale=-1:ih:reset_sar=1", "-c:v", "png"], to: out, token: token)
                 outputs.append(out)
                 progress(Double(index+1)/Double(options.snapshotTimes.count),"Saving frame \(index+1) of \(options.snapshotTimes.count)…")
             }
@@ -442,8 +454,14 @@ public enum MediaEngine {
             if mode == "solid" {
                 graph.append("[\(previous)]drawbox=x=\(rect.x):y=\(rect.y):w=\(rect.w):h=\(rect.h):color=\(try ffmpegColor(options.backgroundColor,opaque:true)):t=fill:enable='\(enable)'[\(next)]")
             } else {
+                // overlay rounds x/y down to the 4:2:0 chroma grid, which would shift an odd-origin
+                // patch and leave the last column/row visible. Start the patch on even pixels.
+                let x = rect.x / 2 * 2, y = rect.y / 2 * 2
+                let rect = (x: x, y: y, w: rect.w + rect.x - x, h: rect.h + rect.y - y)
                 let effect = mode == "blur" ? "gblur=sigma=20:steps=2" : "scale=\(max(1, rect.w / 16)):\(max(1, rect.h / 16)):flags=neighbor,scale=\(rect.w):\(rect.h):flags=neighbor"
-                graph.append("[\(previous)]split[base\(index)][crop\(index)];[crop\(index)]crop=\(rect.w):\(rect.h):\(rect.x):\(rect.y):exact=1,\(effect)[effect\(index)];[base\(index)][effect\(index)]overlay=\(rect.x):\(rect.y):enable='\(enable)'[\(next)]")
+                // overlay alpha-blends its second input. Drop the patch's alpha so it replaces
+                // the area: otherwise transparent pixels in videos with alpha show the original.
+                graph.append("[\(previous)]split[base\(index)][crop\(index)];[crop\(index)]crop=\(rect.w):\(rect.h):\(rect.x):\(rect.y):exact=1,\(effect),format=yuv420p[effect\(index)];[base\(index)][effect\(index)]overlay=\(rect.x):\(rect.y):enable='\(enable)'[\(next)]")
             }
             previous = next
         }
@@ -508,7 +526,7 @@ public enum MediaEngine {
                     if info.hasAudio { arguments += audioEncoding(ext == "webm" ? "opus" : ext == "wmv" ? "wma" : ext == "avi" ? "mp3" : "m4a", quality: options.quality, bitrate: Int(audioRate), source: info.audio) }
                     if ["mp4", "mov", "m4v"].contains(ext) { arguments += ["-movflags", "+faststart"] }
                 } else {
-                    arguments += ["-map", "0:a:0", "-vn"] + audioEncoding(ext, quality: options.quality, bitrate: Int(audioRate), source: info.audio)
+                    arguments += ["-map", "0:a:0", "-vn"] + audioEncoding(ext, quality: options.quality, bitrate: Int(audioRate), source: info.audio, channels: audioRate < 24000 ? 1 : nil)
                     // libopus cannot encode at 22.05 kHz; 24 kHz is its nearest supported rate.
                     if audioRate < 24000 { arguments += ["-ac", "1", "-ar", ext == "opus" ? "24000" : "22050"] }
                 }
@@ -571,7 +589,9 @@ public enum MediaEngine {
         case "ogg": return ["-c:a", "libvorbis", "-b:a", String(max(32000, min(320000, rate)))]
         case "opus":
             let encoderRate = [48000, 24000, 16000, 12000, 8000].contains(sampleRate) ? sampleRate : 48000
-            return ["-c:a", "libopus", "-b:a", String(min(512000, min(rate, 256000 * channelCount))), "-ar", String(encoderRate)]
+            // libopus rejects surround layouts outside Vorbis order, such as the 5.1(side) of FLAC and AC-3 sources.
+            let layout = [3: "3.0", 4: "quad", 5: "5.0", 6: "5.1", 7: "6.1", 8: "7.1"][channelCount]
+            return ["-c:a", "libopus", "-b:a", String(min(512000, min(rate, 256000 * channelCount))), "-ar", String(encoderRate)] + (layout.map { ["-ch_layout", $0] } ?? [])
         case "wma": return ["-c:a", "wmav2", "-b:a", String(max(24000, min(320000, rate))), "-ar", String(max(8000, min(48000, sampleRate)))] + (channelCount > 2 ? ["-ac", "2"] : [])
         default: return ["-c:a", "aac", "-b:a", String(rate)]
         }
@@ -614,14 +634,15 @@ public enum MediaEngine {
         if let width = options.width, width < 2 || width > 16384 { throw NashiError.invalidInput("Width must be between 2 and 16,384 pixels.") }
         if let height = options.height, height < 2 || height > 16384 { throw NashiError.invalidInput("Height must be between 2 and 16,384 pixels.") }
         var filter: String
+        // setsar=1 drops a non-square pixel aspect; reset_sar sizes from the displayed shape instead.
         if let width = options.width, let height = options.height {
             let w = width / 2 * 2, h = height / 2 * 2
-            filter = "scale=\(w):\(h):force_original_aspect_ratio=decrease,pad=\(w):\(h):(ow-iw)/2:(oh-ih)/2,setsar=1"
+            filter = "scale=\(w):\(h):force_original_aspect_ratio=decrease:reset_sar=1,pad=\(w):\(h):(ow-iw)/2:(oh-ih)/2,setsar=1"
         }
-        else if let width = options.width { filter = "scale=\(width / 2 * 2):-2,setsar=1" }
-        else if let height = options.height { filter = "scale=-2:\(height / 2 * 2),setsar=1" }
+        else if let width = options.width { filter = "scale=\(width / 2 * 2):-2:reset_sar=1,setsar=1" }
+        else if let height = options.height { filter = "scale=-2:\(height / 2 * 2):reset_sar=1,setsar=1" }
         else { filter = "pad=ceil(iw/2)*2:ceil(ih/2)*2" }
-        if options.videoMaxHeight > 0 { filter += ",scale=-2:'trunc(min(\(options.videoMaxHeight),ih)/2)*2',setsar=1" }
+        if options.videoMaxHeight > 0 { filter += ",scale=-2:'trunc(min(\(options.videoMaxHeight),ih)/2)*2':reset_sar=1,setsar=1" }
         return filter
     }
 

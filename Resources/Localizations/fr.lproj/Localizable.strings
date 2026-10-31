@@ -307,6 +307,8 @@
 "Bottom" = "Bas";
 "Brightness" = "Luminosité";
 "Bring this format in, then choose its next form." = "Importez ce format, puis choisissez sa prochaine forme.";
+"Build %@" = "Build %@";
+"Build %lld" = "Build %lld";
 "Built for your files. Made for your Mac." = "Conçu pour vos fichiers. Fait pour votre Mac.";
 "CALLOUT" = "LÉGENDE";
 "CANCEL" = "ANNULER";
@@ -444,6 +446,7 @@
 "CONVERT TO" = "CONVERTIR EN";
 "CONVERT · WHILE DRAGGING" = "CONVERTIR · PENDANT LE GLISSEMENT";
 "CONVERT, FINE-TUNE, AND SEND THEM ON THEIR WAY." = "CONVERTISSEZ, PEAUFINEZ ET ENVOYEZ-LES SUR LEUR CHEMIN.";
+"COPIED ALL" = "TOUT COPIÉ";
 "COPIED LINK" = "LIEN COPIÉ";
 "COPY" = "COPIER";
 "COPY A FILE, SOME TEXT, AN IMAGE OR A PUBLIC MEDIA LINK FIRST." = "COPIEZ D’ABORD UN FICHIER, DU TEXTE, UNE IMAGE OU UN LIEN MÉDIA PUBLIC.";
@@ -451,6 +454,7 @@
 "COPY A LINK, THEN CHOOSE DOWNLOAD LINK FROM THE NASHI MENU." = "COPIEZ UN LIEN, PUIS CHOISISSEZ TÉLÉCHARGER LE LIEN DANS LE MENU NASHI.";
 "COPY A PUBLIC MEDIA LINK FIRST." = "COPIEZ D’ABORD UN LIEN MÉDIA PUBLIC.";
 "COPY A VIDEO SHARE LINK OR AN IMAGE ADDRESS FIRST." = "COPIEZ D’ABORD LE LIEN DE PARTAGE D’UNE VIDÉO OU L’ADRESSE D’UNE IMAGE.";
+"COPY ALL" = "TOUT COPIER";
 "COPY DETAILS" = "COPIER LES DÉTAILS";
 "COPY PATH" = "COPIER LE CHEMIN";
 "CORNER RADIUS" = "RAYON DES COINS";
@@ -592,6 +596,8 @@
 "Color" = "Couleur";
 "Column" = "Colonne";
 "Columns" = "Colonnes";
+"Columns: %@" = "Colonnes : %@";
+"Columns: %lld" = "Colonnes : %lld";
 "Command for tools" = "Commande pour les outils";
 "Compatibility" = "Compatibilité";
 "Compress" = "Compresser";
@@ -628,6 +634,7 @@
 "Convert to %lld" = "Convertir en %lld";
 "Convert · while dragging" = "Convertir · pendant le glissement";
 "Convert, fine-tune, and send them on their way." = "Convertissez, peaufinez et envoyez-les sur leur chemin.";
+"Copied all" = "Tout copié";
 "Copied link" = "Lien copié";
 "Copy" = "Copier";
 "Copy Path" = "Copier le chemin";
@@ -636,12 +643,15 @@
 "Copy a link, then choose Download Link from the Nashi menu." = "Copiez un lien, puis choisissez Télécharger le lien dans le menu Nashi.";
 "Copy a public media link first." = "Copiez d’abord un lien média public.";
 "Copy a video share link or an image address first." = "Copiez d’abord le lien de partage d’une vidéo ou l’adresse d’une image.";
+"Copy all" = "Tout copier";
 "Copy details" = "Copier les détails";
 "Copy path" = "Copier le chemin";
 "Corner radius" = "Rayon des coins";
 "Corners" = "Coins";
 "Could not copy the selected file paths." = "Impossible de copier les chemins des fichiers sélectionnés.";
 "Could not copy the selected files." = "Impossible de copier les fichiers sélectionnés.";
+"Could not open %@." = "Impossible d’ouvrir %@.";
+"Could not open %lld." = "Impossible d’ouvrir %lld.";
 "Couldn’t check for updates" = "Impossible de rechercher les mises à jour";
 "Couldn’t finish" = "Impossible de terminer";
 "Couldn’t open this tool" = "Impossible d’ouvrir cet outil";
@@ -823,6 +833,8 @@
 "ENCODED PIXELS, COLOR PROFILE AND DISPLAY ORIENTATION ARE PRESERVED." = "LES PIXELS ENCODÉS, LE PROFIL COLORIMÉTRIQUE ET L’ORIENTATION D’AFFICHAGE SONT CONSERVÉS.";
 "END" = "FIN";
 "ENTER A FINITE NUMBER." = "SAISISSEZ UN NOMBRE FINI.";
+"ENTER A POSITIVE, FINITE TARGET SIZE." = "SAISISSEZ UNE TAILLE CIBLE POSITIVE ET FINIE.";
+"ENTER A REDUCTION GREATER THAN 0% AND LESS THAN 100%." = "SAISISSEZ UNE RÉDUCTION SUPÉRIEURE À 0 % ET INFÉRIEURE À 100 %.";
 "ENTER PAGE NUMBERS WITHIN THIS PDF, IN THE DESIRED ORDER." = "SAISISSEZ DES NUMÉROS DE PAGE DE CE PDF, DANS L’ORDRE SOUHAITÉ.";
 "EPUB LAYOUT" = "MISE EN PAGE EPUB";
 "EPUB layout" = "Mise en page EPUB";
@@ -851,6 +863,10 @@
 "Encoded pixels, color profile and display orientation are preserved." = "Les pixels encodés, le profil colorimétrique et l’orientation d’affichage sont conservés.";
 "End" = "Fin";
 "Enter a finite number." = "Saisissez un nombre fini.";
+"Enter a positive, finite target size." = "Saisissez une taille cible positive et finie.";
+"Enter a reduction greater than 0% and less than 100%." = "Saisissez une réduction supérieure à 0 % et inférieure à 100 %.";
+"Enter a target of at least one byte and less than %@ bytes." = "Saisissez une cible d’au moins un octet et inférieure à %@ octets.";
+"Enter a target of at least one byte and less than %lld bytes." = "Saisissez une cible d’au moins un octet et inférieure à %lld octets.";
 "Enter a valid number for %@." = "Saisissez un nombre valide pour %@.";
 "Enter a valid number for %lld." = "Saisissez un nombre valide pour %lld.";
 "Enter page numbers within this PDF, in the desired order." = "Saisissez des numéros de page de ce PDF, dans l’ordre souhaité.";
@@ -1325,6 +1341,10 @@
 "NOTHING HERE YET. PASTE SOMETHING OR MAKE YOUR FIRST FRESH COPY." = "RIEN ICI POUR L’INSTANT. COLLEZ QUELQUE CHOSE OU CRÉEZ VOTRE PREMIÈRE COPIE.";
 "NUMBER" = "NUMÉRO";
 "NUMBER OF CLIPS" = "NOMBRE DE CLIPS";
+"Nashi %@ · Build %@" = "Nashi %@ · Build %@";
+"Nashi %@ · Build %lld" = "Nashi %@ · Build %lld";
+"Nashi %lld · Build %@" = "Nashi %lld · Build %@";
+"Nashi %lld · Build %lld" = "Nashi %lld · Build %lld";
 "Nashi Settings" = "Réglages de Nashi";
 "Nashi actions wheel" = "Roue des actions sur les fichiers Nashi";
 "Nashi checks once an hour while it’s running. You choose when to download and install." = "Nashi vérifie une fois par heure pendant son exécution. Vous choisissez quand télécharger et installer.";
@@ -1399,6 +1419,7 @@
 "ORIGINAL STAYS SAFE" = "L’ORIGINAL RESTE INTACT";
 "ORIGINALS REMAIN SAFE. CHOOSE WHERE NEW COPIES SHOULD LAND." = "LES ORIGINAUX RESTENT INTACTS. CHOISISSEZ OÙ PLACER LES NOUVELLES COPIES.";
 "OTHER" = "AUTRE";
+"OUTER PADDING" = "MARGE EXTÉRIEURE";
 "OUTPUT" = "SORTIE";
 "OUTPUT FORMAT" = "FORMAT DE SORTIE";
 "OUTPUT-ONLY FORMAT." = "FORMAT DE SORTIE UNIQUEMENT.";
@@ -1443,6 +1464,7 @@
 "Original stays safe" = "L’original reste intact";
 "Originals remain safe. Choose where new copies should land." = "Les originaux restent intacts. Choisissez où placer les nouvelles copies.";
 "Other" = "Autre";
+"Outer padding" = "Marge extérieure";
 "Output" = "Sortie";
 "Output format" = "Format de sortie";
 "Output-only format." = "Format de sortie uniquement.";
@@ -2266,7 +2288,9 @@
 "Value" = "Valeur";
 "Verifying update signature…" = "Vérification de la signature de la mise à jour…";
 "Version %@" = "Version %@";
+"Version %@ · Install when you’re ready." = "Version %@ · Installez-la quand vous voulez.";
 "Version %lld" = "Version %lld";
+"Version %lld · Install when you’re ready." = "Version %lld · Installez-la quand vous voulez.";
 "Vibrance" = "Éclat";
 "Video" = "Vidéo";
 "Video Compression" = "Compression vidéo";
@@ -2322,6 +2346,7 @@
 "YOUR LIBRARY" = "VOTRE BIBLIOTHÈQUE";
 "YOUR NEXT FRESH COPY WILL LAND HERE." = "VOTRE PROCHAINE COPIE ARRIVERA ICI.";
 "YOUR ORIGINAL STAYS SAFE" = "VOTRE ORIGINAL RESTE INTACT";
+"YOUR TASK WILL FINISH BEFORE NASHI RESTARTS." = "VOTRE TÂCHE SE TERMINERA AVANT LE REDÉMARRAGE DE NASHI.";
 "YOUR TOOLS ARE READY." = "VOS OUTILS SONT PRÊTS.";
 "YOUR TOOLS ARE READY. LET’S PUT THAT NEXT FILE TO GOOD USE." = "VOS OUTILS SONT PRÊTS. METTONS CE PROCHAIN FICHIER À PROFIT.";
 "YOUTUBE THUMBNAIL · BEST AVAILABLE FULL-SIZE IMAGE" = "MINIATURE YOUTUBE · MEILLEURE IMAGE EN TAILLE RÉELLE DISPONIBLE";
@@ -2344,6 +2369,7 @@
 "Your kind of flow." = "Votre façon de travailler.";
 "Your next fresh copy will land here." = "Votre prochaine copie arrivera ici.";
 "Your original stays safe" = "Votre original reste intact";
+"Your task will finish before Nashi restarts." = "Votre tâche se terminera avant le redémarrage de Nashi.";
 "Your tools are ready." = "Vos outils sont prêts.";
 "Your tools are ready. Let’s put that next file to good use." = "Vos outils sont prêts. Mettons ce prochain fichier à profit.";
 "You’re all set.\nMake something good." = "Tout est prêt.\nCréez quelque chose de bien.";

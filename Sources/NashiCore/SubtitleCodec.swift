@@ -45,6 +45,12 @@ enum SubtitleCodec {
             index += 1
             var text: [String] = []
             while index < lines.count && !lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
+                // WebVTT ends cue text at the next timing line. SRT files that
+                // omit the blank line also put the next cue's number before it.
+                if timing.firstMatch(in: lines[index], range: NSRange(location: 0, length: (lines[index] as NSString).length)) != nil {
+                    if text.last?.trimmingCharacters(in: .whitespaces).allSatisfy({ $0.isASCII && $0.isNumber }) == true { text.removeLast() }
+                    break
+                }
                 text.append(lines[index]); index += 1
             }
             cues.append(.init(start: start, end: end, text: text.joined(separator: "\n"), settings: settings))

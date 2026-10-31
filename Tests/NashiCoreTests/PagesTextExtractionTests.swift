@@ -19,6 +19,14 @@ final class PagesTextExtractionTests: XCTestCase {
         XCTAssertEqual(cellTexts(model), ["Cell choice"])
     }
 
+    // F1541
+    func testRunsInsideInlineWrappersAreKept() throws {
+        for wrapper in ["fldSimple", "customXml", "moveTo", "dir", "bdo"] {
+            let body = "<w:p>\(run("Page "))<w:\(wrapper) w:val=\"rtl\">\(run("7"))</w:\(wrapper)></w:p>"
+            XCTAssertEqual(paragraphTexts(try convert(body: body)), ["Page 7"], wrapper)
+        }
+    }
+
     private func run(_ text: String) -> String { "<w:r><w:t xml:space=\"preserve\">\(text)</w:t></w:r>" }
     private func paragraph(_ text: String) -> String { "<w:p>\(run(text))</w:p>" }
 

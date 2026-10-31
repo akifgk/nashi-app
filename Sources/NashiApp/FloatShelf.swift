@@ -344,7 +344,7 @@ enum FloatShelfViewMode:Int { case icons,list }
         return !items.isEmpty
     }
     @objc private func openSelection() {
-        for url in actionURLs { if !NSWorkspace.shared.open(url) { statusLabel.stringValue="Could not open \(url.lastPathComponent)." } }
+        for url in actionURLs { if !NSWorkspace.shared.open(url) { statusLabel.stringValue=L10n.text("Could not open \(url.lastPathComponent).") } }
     }
     @objc private func revealSelection() { if !actionURLs.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(actionURLs) } }
     @objc private func copyFiles() { NSPasteboard.general.clearContents();NSPasteboard.general.writeObjects(actionURLs.map{$0 as NSURL}) }

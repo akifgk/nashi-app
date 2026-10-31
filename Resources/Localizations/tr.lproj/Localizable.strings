@@ -307,6 +307,8 @@
 "Bottom" = "Alt";
 "Brightness" = "Parlaklık";
 "Bring this format in, then choose its next form." = "Bu biçimi içeri al, sonra yeni biçimini seç.";
+"Build %@" = "Derleme %@";
+"Build %lld" = "Derleme %lld";
 "Built for your files. Made for your Mac." = "Dosyaların için geliştirildi. Mac'in için tasarlandı.";
 "CALLOUT" = "AÇIKLAMA";
 "CANCEL" = "İPTAL";
@@ -444,6 +446,7 @@
 "CONVERT TO" = "ŞUNA DÖNÜŞTÜR";
 "CONVERT · WHILE DRAGGING" = "DÖNÜŞTÜR · SÜRÜKLERKEN";
 "CONVERT, FINE-TUNE, AND SEND THEM ON THEIR WAY." = "DÖNÜŞTÜR, İNCE AYAR YAP VE PAYLAŞ.";
+"COPIED ALL" = "TÜMÜ KOPYALANDI";
 "COPIED LINK" = "KOPYALANAN BAĞLANTI";
 "COPY" = "KOPYALA";
 "COPY A FILE, SOME TEXT, AN IMAGE OR A PUBLIC MEDIA LINK FIRST." = "ÖNCE BİR DOSYA, METİN, GÖRSEL VEYA HERKESE AÇIK BİR MEDYA BAĞLANTISI KOPYALA.";
@@ -451,6 +454,7 @@
 "COPY A LINK, THEN CHOOSE DOWNLOAD LINK FROM THE NASHI MENU." = "BİR BAĞLANTI KOPYALA, SONRA NASHI MENÜSÜNDEN BAĞLANTIDAN İNDİR'İ SEÇ.";
 "COPY A PUBLIC MEDIA LINK FIRST." = "ÖNCE HERKESE AÇIK BİR MEDYA BAĞLANTISI KOPYALA.";
 "COPY A VIDEO SHARE LINK OR AN IMAGE ADDRESS FIRST." = "ÖNCE BİR VİDEO PAYLAŞIM BAĞLANTISI VEYA GÖRSEL ADRESİ KOPYALA.";
+"COPY ALL" = "TÜMÜNÜ KOPYALA";
 "COPY DETAILS" = "AYRINTILARI KOPYALA";
 "COPY PATH" = "YOLU KOPYALA";
 "CORNER RADIUS" = "KÖŞE YUVARLAKLIĞI";
@@ -592,6 +596,8 @@
 "Color" = "Renk";
 "Column" = "Sütun";
 "Columns" = "Sütun sayısı";
+"Columns: %@" = "Sütun sayısı: %@";
+"Columns: %lld" = "Sütun sayısı: %lld";
 "Command for tools" = "Araçlar için Command";
 "Compatibility" = "Uyumluluk";
 "Compress" = "Sıkıştır";
@@ -628,6 +634,7 @@
 "Convert to %lld" = "%lld biçimine dönüştür";
 "Convert · while dragging" = "Dönüştür · sürüklerken";
 "Convert, fine-tune, and send them on their way." = "Dönüştür, ince ayar yap ve paylaş.";
+"Copied all" = "Tümü kopyalandı";
 "Copied link" = "Kopyalanan bağlantı";
 "Copy" = "Kopyala";
 "Copy Path" = "Yolu Kopyala";
@@ -636,12 +643,15 @@
 "Copy a link, then choose Download Link from the Nashi menu." = "Bir bağlantı kopyala, sonra Nashi menüsünden Bağlantıdan İndir'i seç.";
 "Copy a public media link first." = "Önce herkese açık bir medya bağlantısı kopyala.";
 "Copy a video share link or an image address first." = "Önce bir video paylaşım bağlantısı veya görsel adresi kopyala.";
+"Copy all" = "Tümünü kopyala";
 "Copy details" = "Ayrıntıları kopyala";
 "Copy path" = "Yolu kopyala";
 "Corner radius" = "Köşe yuvarlaklığı";
 "Corners" = "Köşeler";
 "Could not copy the selected file paths." = "Seçili dosya yolları kopyalanamadı.";
 "Could not copy the selected files." = "Seçili dosyalar kopyalanamadı.";
+"Could not open %@." = "%@ açılamadı.";
+"Could not open %lld." = "%lld açılamadı.";
 "Couldn’t check for updates" = "Güncellemeler denetlenemedi";
 "Couldn’t finish" = "İşlem tamamlanamadı";
 "Couldn’t open this tool" = "Bu araç açılamadı";
@@ -823,6 +833,8 @@
 "ENCODED PIXELS, COLOR PROFILE AND DISPLAY ORIENTATION ARE PRESERVED." = "KODLANMIŞ PİKSELLER, RENK PROFİLİ VE GÖRÜNTÜ YÖNÜ KORUNUR.";
 "END" = "BİTİŞ";
 "ENTER A FINITE NUMBER." = "GEÇERLİ BİR SAYI GİR.";
+"ENTER A POSITIVE, FINITE TARGET SIZE." = "POZİTİF VE GEÇERLİ BİR HEDEF BOYUT GİR.";
+"ENTER A REDUCTION GREATER THAN 0% AND LESS THAN 100%." = "%0'DAN BÜYÜK VE %100'DEN KÜÇÜK BİR KÜÇÜLTME GİR.";
 "ENTER PAGE NUMBERS WITHIN THIS PDF, IN THE DESIRED ORDER." = "BU PDF'DEKİ SAYFA NUMARALARINI İSTEDİĞİN SIRAYLA GİR.";
 "EPUB LAYOUT" = "EPUB DÜZENİ";
 "EPUB layout" = "EPUB düzeni";
@@ -851,6 +863,10 @@
 "Encoded pixels, color profile and display orientation are preserved." = "Kodlanmış pikseller, renk profili ve görüntü yönü korunur.";
 "End" = "Bitiş";
 "Enter a finite number." = "Geçerli bir sayı gir.";
+"Enter a positive, finite target size." = "Pozitif ve geçerli bir hedef boyut gir.";
+"Enter a reduction greater than 0% and less than 100%." = "%0'dan büyük ve %100'den küçük bir küçültme gir.";
+"Enter a target of at least one byte and less than %@ bytes." = "En az bir bayt ve %@ bayttan küçük bir hedef gir.";
+"Enter a target of at least one byte and less than %lld bytes." = "En az bir bayt ve %lld bayttan küçük bir hedef gir.";
 "Enter a valid number for %@." = "%@ için geçerli bir sayı gir.";
 "Enter a valid number for %lld." = "%lld için geçerli bir sayı gir.";
 "Enter page numbers within this PDF, in the desired order." = "Bu PDF'deki sayfa numaralarını istediğin sırayla gir.";
@@ -1325,6 +1341,10 @@
 "NOTHING HERE YET. PASTE SOMETHING OR MAKE YOUR FIRST FRESH COPY." = "BURADA HENÜZ BİR ŞEY YOK. BİR DOSYA YAPIŞTIR VEYA İLK KOPYANI OLUŞTUR.";
 "NUMBER" = "NUMARA";
 "NUMBER OF CLIPS" = "KLİP SAYISI";
+"Nashi %@ · Build %@" = "Nashi %@ · Derleme %@";
+"Nashi %@ · Build %lld" = "Nashi %@ · Derleme %lld";
+"Nashi %lld · Build %@" = "Nashi %lld · Derleme %@";
+"Nashi %lld · Build %lld" = "Nashi %lld · Derleme %lld";
 "Nashi Settings" = "Nashi Ayarları";
 "Nashi actions wheel" = "Nashi dosya işlemleri çarkı";
 "Nashi checks once an hour while it’s running. You choose when to download and install." = "Nashi çalışırken saatte bir denetler. İndirme ve kurulum zamanını sen seçersin.";
@@ -1399,6 +1419,7 @@
 "ORIGINAL STAYS SAFE" = "ORİJİNAL DOSYAN GÜVENDE";
 "ORIGINALS REMAIN SAFE. CHOOSE WHERE NEW COPIES SHOULD LAND." = "ORİJİNALLER GÜVENDE. YENİ KOPYALARIN NEREYE KAYDEDİLECEĞİNİ SEÇ.";
 "OTHER" = "DİĞER";
+"OUTER PADDING" = "DIŞ BOŞLUK";
 "OUTPUT" = "ÇIKTI";
 "OUTPUT FORMAT" = "ÇIKTI BİÇİMİ";
 "OUTPUT-ONLY FORMAT." = "YALNIZCA ÇIKTI BİÇİMİ.";
@@ -1443,6 +1464,7 @@
 "Original stays safe" = "Orijinal dosyan güvende";
 "Originals remain safe. Choose where new copies should land." = "Orijinaller güvende. Yeni kopyaların nereye kaydedileceğini seç.";
 "Other" = "Diğer";
+"Outer padding" = "Dış boşluk";
 "Output" = "Çıktı";
 "Output format" = "Çıktı biçimi";
 "Output-only format." = "Yalnızca çıktı biçimi.";
@@ -2266,7 +2288,9 @@
 "Value" = "Değer";
 "Verifying update signature…" = "Güncelleme imzası doğrulanıyor…";
 "Version %@" = "Sürüm %@";
+"Version %@ · Install when you’re ready." = "Sürüm %@ · Hazır olduğunda kur.";
 "Version %lld" = "Sürüm %lld";
+"Version %lld · Install when you’re ready." = "Sürüm %lld · Hazır olduğunda kur.";
 "Vibrance" = "Canlılık";
 "Video" = "Video";
 "Video Compression" = "Video Sıkıştırma";
@@ -2322,6 +2346,7 @@
 "YOUR LIBRARY" = "KİTAPLIĞIN";
 "YOUR NEXT FRESH COPY WILL LAND HERE." = "BİR SONRAKİ YENİ KOPYAN BURADA GÖRÜNECEK.";
 "YOUR ORIGINAL STAYS SAFE" = "ORİJİNAL DOSYAN GÜVENDE";
+"YOUR TASK WILL FINISH BEFORE NASHI RESTARTS." = "İŞLEMİN, NASHI YENİDEN BAŞLAMADAN ÖNCE TAMAMLANACAK.";
 "YOUR TOOLS ARE READY." = "ARAÇLARIN HAZIR.";
 "YOUR TOOLS ARE READY. LET’S PUT THAT NEXT FILE TO GOOD USE." = "ARAÇLARIN HAZIR. SIRADAKİ DOSYAYI BİRLİKTE HAZIRLAYALIM.";
 "YOUTUBE THUMBNAIL · BEST AVAILABLE FULL-SIZE IMAGE" = "YOUTUBE KÜÇÜK RESMİ · EN İYİ TAM BOYUTLU GÖRSEL";
@@ -2344,6 +2369,7 @@
 "Your kind of flow." = "Senin tarzın, senin akışın.";
 "Your next fresh copy will land here." = "Bir sonraki yeni kopyan burada görünecek.";
 "Your original stays safe" = "Orijinal dosyan güvende";
+"Your task will finish before Nashi restarts." = "İşlemin, Nashi yeniden başlamadan önce tamamlanacak.";
 "Your tools are ready." = "Araçların hazır.";
 "Your tools are ready. Let’s put that next file to good use." = "Araçların hazır. Sıradaki dosyayı birlikte hazırlayalım.";
 "You’re all set.\nMake something good." = "Her şey hazır.\nGüzel bir şey yap.";

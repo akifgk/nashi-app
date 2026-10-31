@@ -51,6 +51,17 @@ final class WebDownloadTests:XCTestCase {
         let token=CancellationToken();token.cancel()
         XCTAssertThrowsError(try WebDownloadProcess.run(URL(fileURLWithPath:"/bin/sleep"),["30"],token:token,timeout:30))
     }
+    func testDownloadChildReceivesOnlyStandardStreams() throws {
+        let directory=try OutputFiles.temporaryDirectory();defer { try? FileManager.default.removeItem(at:directory) }
+        let probe=directory.appendingPathComponent("probe")
+        try "#!/bin/sh\ns=\"\";for fd in $1; do if { true >&\"$fd\"; } 2>/dev/null; then s=\"$s $fd:open\"; else s=\"$s $fd:closed\"; fi; done\necho \"NASHI_STAGE:fds=$s\"\n".write(to:probe,atomically:true,encoding:.utf8)
+        try FileManager.default.setAttributes([.posixPermissions:0o755],ofItemAtPath:probe.path)
+        // Another run's pipe and an open file: a child holding them would keep that pipe from reaching EOF.
+        let other=Pipe(),file=try XCTUnwrap(FileHandle(forWritingAtPath:probe.path));defer { try? file.close() }
+        let fds="1 2 \(other.fileHandleForWriting.fileDescriptor) \(file.fileDescriptor)",label=NSMutableString()
+        _=try WebDownloadProcess.run(probe,[fds],token:.init(),timeout:30) { _,text in label.setString(text) }
+        XCTAssertEqual(label as String,"fds= 1:open 2:open \(other.fileHandleForWriting.fileDescriptor):closed \(file.fileDescriptor):closed")
+    }
     func testDownloadKeepsTemporaryFilesInTheStageInsteadOfTheWorkingDirectory() throws {
         let info=try WebDownloadEngine.parseMetadata(Data(#"{"formats":[{"height":1080}]}"#.utf8),url:URL(string:"https://example.org/watch")!)
         let args=try WebDownloadEngine.downloadArguments(info,mode:.video,maximumHeight:nil,directory:URL(fileURLWithPath:"/tmp/stage"))

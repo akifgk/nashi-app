@@ -22,7 +22,8 @@ public sealed record WebMediaPayload(string Url,string Kind,string? Thumbnail=nu
         }
         foreach(var url in urls)
         {
-            if(url.Host is not ("instagram.com" or "www.instagram.com"))continue;var match=Regex.Match(url.AbsolutePath,@"^/(p|reel|reels|tv)/([A-Za-z0-9_-]+)/?",RegexOptions.CultureInvariant,TimeSpan.FromSeconds(1));if(match.Success)return new("https://www.instagram.com/"+(match.Groups[1].Value is "reels" or "tv"?"reel":match.Groups[1].Value)+"/"+match.Groups[2].Value+"/",match.Groups[1].Value=="p"?"instagramPhotos":"instagramReel");
+            // Like the Mac payload: the mobile host, and profile grids that put the username before /p/ or /reel/.
+            if(url.Host is not ("instagram.com" or "www.instagram.com" or "m.instagram.com"))continue;var match=Regex.Match(url.AbsolutePath,@"^/(?:[A-Za-z0-9._]{1,30}/)?(p|reel|reels|tv)/([A-Za-z0-9_-]+)/?",RegexOptions.CultureInvariant,TimeSpan.FromSeconds(1));if(match.Success)return new("https://www.instagram.com/"+(match.Groups[1].Value is "reels" or "tv"?"reel":match.Groups[1].Value)+"/"+match.Groups[2].Value+"/",match.Groups[1].Value=="p"?"instagramPhotos":"instagramReel");
         }
         var first=urls.FirstOrDefault();if(first is null)return null;var ext=Path.GetExtension(first.AbsolutePath).ToLowerInvariant();return new(first.AbsoluteUri,new[]{".jpg",".jpeg",".png",".webp",".avif",".gif",".heic",".svg",".bmp",".tiff",".tif"}.Contains(ext)?"image":"media");
     }

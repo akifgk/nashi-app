@@ -307,6 +307,8 @@
 "Bottom" = "Bottom";
 "Brightness" = "Brightness";
 "Bring this format in, then choose its next form." = "Bring this format in, then choose its next form.";
+"Build %@" = "Build %@";
+"Build %lld" = "Build %lld";
 "Built for your files. Made for your Mac." = "Built for your files. Made for your Mac.";
 "CALLOUT" = "CALLOUT";
 "CANCEL" = "CANCEL";
@@ -444,6 +446,7 @@
 "CONVERT TO" = "CONVERT TO";
 "CONVERT · WHILE DRAGGING" = "CONVERT · WHILE DRAGGING";
 "CONVERT, FINE-TUNE, AND SEND THEM ON THEIR WAY." = "CONVERT, FINE-TUNE, AND SEND THEM ON THEIR WAY.";
+"COPIED ALL" = "COPIED ALL";
 "COPIED LINK" = "COPIED LINK";
 "COPY" = "COPY";
 "COPY A FILE, SOME TEXT, AN IMAGE OR A PUBLIC MEDIA LINK FIRST." = "COPY A FILE, SOME TEXT, AN IMAGE OR A PUBLIC MEDIA LINK FIRST.";
@@ -451,6 +454,7 @@
 "COPY A LINK, THEN CHOOSE DOWNLOAD LINK FROM THE NASHI MENU." = "COPY A LINK, THEN CHOOSE DOWNLOAD LINK FROM THE NASHI MENU.";
 "COPY A PUBLIC MEDIA LINK FIRST." = "COPY A PUBLIC MEDIA LINK FIRST.";
 "COPY A VIDEO SHARE LINK OR AN IMAGE ADDRESS FIRST." = "COPY A VIDEO SHARE LINK OR AN IMAGE ADDRESS FIRST.";
+"COPY ALL" = "COPY ALL";
 "COPY DETAILS" = "COPY DETAILS";
 "COPY PATH" = "COPY PATH";
 "CORNER RADIUS" = "CORNER RADIUS";
@@ -592,6 +596,8 @@
 "Color" = "Color";
 "Column" = "Column";
 "Columns" = "Columns";
+"Columns: %@" = "Columns: %@";
+"Columns: %lld" = "Columns: %lld";
 "Command for tools" = "Command for tools";
 "Compatibility" = "Compatibility";
 "Compress" = "Compress";
@@ -628,6 +634,7 @@
 "Convert to %lld" = "Convert to %lld";
 "Convert · while dragging" = "Convert · while dragging";
 "Convert, fine-tune, and send them on their way." = "Convert, fine-tune, and send them on their way.";
+"Copied all" = "Copied all";
 "Copied link" = "Copied link";
 "Copy" = "Copy";
 "Copy Path" = "Copy Path";
@@ -636,12 +643,15 @@
 "Copy a link, then choose Download Link from the Nashi menu." = "Copy a link, then choose Download Link from the Nashi menu.";
 "Copy a public media link first." = "Copy a public media link first.";
 "Copy a video share link or an image address first." = "Copy a video share link or an image address first.";
+"Copy all" = "Copy all";
 "Copy details" = "Copy details";
 "Copy path" = "Copy path";
 "Corner radius" = "Corner radius";
 "Corners" = "Corners";
 "Could not copy the selected file paths." = "Could not copy the selected file paths.";
 "Could not copy the selected files." = "Could not copy the selected files.";
+"Could not open %@." = "Could not open %@.";
+"Could not open %lld." = "Could not open %lld.";
 "Couldn’t check for updates" = "Couldn’t check for updates";
 "Couldn’t finish" = "Couldn’t finish";
 "Couldn’t open this tool" = "Couldn’t open this tool";
@@ -823,6 +833,8 @@
 "ENCODED PIXELS, COLOR PROFILE AND DISPLAY ORIENTATION ARE PRESERVED." = "ENCODED PIXELS, COLOR PROFILE AND DISPLAY ORIENTATION ARE PRESERVED.";
 "END" = "END";
 "ENTER A FINITE NUMBER." = "ENTER A FINITE NUMBER.";
+"ENTER A POSITIVE, FINITE TARGET SIZE." = "ENTER A POSITIVE, FINITE TARGET SIZE.";
+"ENTER A REDUCTION GREATER THAN 0% AND LESS THAN 100%." = "ENTER A REDUCTION GREATER THAN 0% AND LESS THAN 100%.";
 "ENTER PAGE NUMBERS WITHIN THIS PDF, IN THE DESIRED ORDER." = "ENTER PAGE NUMBERS WITHIN THIS PDF, IN THE DESIRED ORDER.";
 "EPUB LAYOUT" = "EPUB LAYOUT";
 "EPUB layout" = "EPUB layout";
@@ -851,6 +863,10 @@
 "Encoded pixels, color profile and display orientation are preserved." = "Encoded pixels, color profile and display orientation are preserved.";
 "End" = "End";
 "Enter a finite number." = "Enter a finite number.";
+"Enter a positive, finite target size." = "Enter a positive, finite target size.";
+"Enter a reduction greater than 0% and less than 100%." = "Enter a reduction greater than 0% and less than 100%.";
+"Enter a target of at least one byte and less than %@ bytes." = "Enter a target of at least one byte and less than %@ bytes.";
+"Enter a target of at least one byte and less than %lld bytes." = "Enter a target of at least one byte and less than %lld bytes.";
 "Enter a valid number for %@." = "Enter a valid number for %@.";
 "Enter a valid number for %lld." = "Enter a valid number for %lld.";
 "Enter page numbers within this PDF, in the desired order." = "Enter page numbers within this PDF, in the desired order.";
@@ -1325,6 +1341,10 @@
 "NOTHING HERE YET. PASTE SOMETHING OR MAKE YOUR FIRST FRESH COPY." = "NOTHING HERE YET. PASTE SOMETHING OR MAKE YOUR FIRST FRESH COPY.";
 "NUMBER" = "NUMBER";
 "NUMBER OF CLIPS" = "NUMBER OF CLIPS";
+"Nashi %@ · Build %@" = "Nashi %@ · Build %@";
+"Nashi %@ · Build %lld" = "Nashi %@ · Build %lld";
+"Nashi %lld · Build %@" = "Nashi %lld · Build %@";
+"Nashi %lld · Build %lld" = "Nashi %lld · Build %lld";
 "Nashi Settings" = "Nashi Settings";
 "Nashi actions wheel" = "Nashi actions wheel";
 "Nashi checks once an hour while it’s running. You choose when to download and install." = "Nashi checks once an hour while it’s running. You choose when to download and install.";
@@ -1399,6 +1419,7 @@
 "ORIGINAL STAYS SAFE" = "ORIGINAL STAYS SAFE";
 "ORIGINALS REMAIN SAFE. CHOOSE WHERE NEW COPIES SHOULD LAND." = "ORIGINALS REMAIN SAFE. CHOOSE WHERE NEW COPIES SHOULD LAND.";
 "OTHER" = "OTHER";
+"OUTER PADDING" = "OUTER PADDING";
 "OUTPUT" = "OUTPUT";
 "OUTPUT FORMAT" = "OUTPUT FORMAT";
 "OUTPUT-ONLY FORMAT." = "OUTPUT-ONLY FORMAT.";
@@ -1443,6 +1464,7 @@
 "Original stays safe" = "Original stays safe";
 "Originals remain safe. Choose where new copies should land." = "Originals remain safe. Choose where new copies should land.";
 "Other" = "Other";
+"Outer padding" = "Outer padding";
 "Output" = "Output";
 "Output format" = "Output format";
 "Output-only format." = "Output-only format.";
@@ -2266,7 +2288,9 @@
 "Value" = "Value";
 "Verifying update signature…" = "Verifying update signature…";
 "Version %@" = "Version %@";
+"Version %@ · Install when you’re ready." = "Version %@ · Install when you’re ready.";
 "Version %lld" = "Version %lld";
+"Version %lld · Install when you’re ready." = "Version %lld · Install when you’re ready.";
 "Vibrance" = "Vibrance";
 "Video" = "Video";
 "Video Compression" = "Video Compression";
@@ -2322,6 +2346,7 @@
 "YOUR LIBRARY" = "YOUR LIBRARY";
 "YOUR NEXT FRESH COPY WILL LAND HERE." = "YOUR NEXT FRESH COPY WILL LAND HERE.";
 "YOUR ORIGINAL STAYS SAFE" = "YOUR ORIGINAL STAYS SAFE";
+"YOUR TASK WILL FINISH BEFORE NASHI RESTARTS." = "YOUR TASK WILL FINISH BEFORE NASHI RESTARTS.";
 "YOUR TOOLS ARE READY." = "YOUR TOOLS ARE READY.";
 "YOUR TOOLS ARE READY. LET’S PUT THAT NEXT FILE TO GOOD USE." = "YOUR TOOLS ARE READY. LET’S PUT THAT NEXT FILE TO GOOD USE.";
 "YOUTUBE THUMBNAIL · BEST AVAILABLE FULL-SIZE IMAGE" = "YOUTUBE THUMBNAIL · BEST AVAILABLE FULL-SIZE IMAGE";
@@ -2344,6 +2369,7 @@
 "Your kind of flow." = "Your kind of flow.";
 "Your next fresh copy will land here." = "Your next fresh copy will land here.";
 "Your original stays safe" = "Your original stays safe";
+"Your task will finish before Nashi restarts." = "Your task will finish before Nashi restarts.";
 "Your tools are ready." = "Your tools are ready.";
 "Your tools are ready. Let’s put that next file to good use." = "Your tools are ready. Let’s put that next file to good use.";
 "You’re all set.\nMake something good." = "You’re all set.\nMake something good.";

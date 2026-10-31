@@ -10,8 +10,19 @@ public enum ImageEngine {
     private static let imageColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
     private static let imageContext = CIContext(options: [.cacheIntermediates: false])
     public static func load(_ url: URL) throws -> CGImage {
-        if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-           let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways:true, kCGImageSourceCreateThumbnailWithTransform:true, kCGImageSourceThumbnailMaxPixelSize:32000] as CFDictionary) { return image }
+        if let source = CGImageSourceCreateWithURL(url as CFURL, nil) {
+            // The thumbnail transform also applies the pixel aspect ratio implied by unequal
+            // horizontal and vertical DPI, which resamples the stored pixels. Orient those files here.
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString:Any]
+            let squarePixels = (properties?[kCGImagePropertyDPIWidth] as? Double) == (properties?[kCGImagePropertyDPIHeight] as? Double)
+            if let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways:true, kCGImageSourceCreateThumbnailWithTransform:squarePixels, kCGImageSourceThumbnailMaxPixelSize:32000] as CFDictionary) {
+                let orientation = (properties?[kCGImagePropertyOrientation] as? NSNumber)?.int32Value ?? 1
+                if squarePixels || !(2...8).contains(orientation) { return image }
+                let oriented = CIImage(cgImage: image).oriented(forExifOrientation: orientation)
+                guard let result = imageContext.createCGImage(oriented, from: oriented.extent) else { throw NashiError.failed("Could not orient image.") }
+                return result
+            }
+        }
         if let image = NSImage(contentsOf: url), let cg = image.cgImage(forProposedRect:nil,context:nil,hints:nil) { return cg }
         // FFmpeg handles additional decoders (including animated inputs' first frame).
         let temp = try OutputFiles.temporaryDirectory(); defer { try? FileManager.default.removeItem(at:temp) }
@@ -169,7 +180,9 @@ public enum ImageEngine {
         if a.noiseReduction > 0 { ci = ci.applyingFilter("CINoiseReduction", parameters: ["inputNoiseLevel": min(1,a.noiseReduction) * 0.1, "inputSharpness": 0]) }
         if a.exposure != 0 { ci = ci.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: min(10,max(-10,a.exposure))]) }
         if a.temperature != 0 || a.tint != 0 {
-            ci = ci.applyingFilter("CITemperatureAndTint", parameters: ["inputNeutral": CIVector(x:6500,y:0), "inputTargetNeutral": CIVector(x:6500 + max(-1,min(1,a.temperature)) * 3000, y:max(-1,min(1,a.tint)) * 100)])
+            // A lower target neutral warms and a negative target tint adds magenta.
+            // Positive values warm and add magenta, matching the Windows editor.
+            ci = ci.applyingFilter("CITemperatureAndTint", parameters: ["inputNeutral": CIVector(x:6500,y:0), "inputTargetNeutral": CIVector(x:6500 - max(-1,min(1,a.temperature)) * 3000, y:-max(-1,min(1,a.tint)) * 100)])
         }
         ci=ci.applyingFilter("CIColorControls",parameters:[kCIInputBrightnessKey:options.brightness+a.brightness,kCIInputContrastKey:max(0,options.contrast*a.contrast),kCIInputSaturationKey:max(0,options.saturation*a.saturation)])
         if a.highlights != 0 || a.shadows != 0 || a.whites != 0 || a.blacks != 0 {
@@ -372,7 +385,10 @@ public enum ImageEngine {
                 let filtered:CIImage
                 if settings.style == .blur { filtered=original.clampedToExtent().applyingFilter("CIGaussianBlur",parameters:[kCIInputRadiusKey:max(1,settings.blurRadius)]).cropped(to:bounds) }
                 else { filtered=original.clampedToExtent().applyingFilter("CIPixellate",parameters:[kCIInputScaleKey:max(2,settings.pixelSize),kCIInputCenterKey:CIVector(x:bounds.midX,y:bounds.midY)]).cropped(to:bounds) }
-                guard let cg=imageContext.createCGImage(filtered,from:bounds) else { throw NashiError.failed("Could not render the redaction.") };ctx.draw(cg,in:target)
+                guard let cg=imageContext.createCGImage(filtered,from:bounds) else { throw NashiError.failed("Could not render the redaction.") }
+                // Replace the area. Drawing over it would let the original show
+                // through every transparent or translucent filtered pixel.
+                ctx.saveGState();ctx.setBlendMode(.copy);ctx.draw(cg,in:target);ctx.restoreGState()
             }
         }
         guard let result=ctx.makeImage() else { throw NashiError.failed("Could not redact image.") };return result
