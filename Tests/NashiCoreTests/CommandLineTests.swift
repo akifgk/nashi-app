@@ -58,4 +58,19 @@ final class CommandLineTests:XCTestCase {
             XCTAssertNotEqual(NashiCommandLine.run(arguments:["nashi-cli","inspect",root.appendingPathComponent(name).path]),0,name)
         }
     }
+    func testUsageGoesToStandardErrorAndListsEveryCommand() throws {
+        let root=try OutputFiles.temporaryDirectory();defer{try? FileManager.default.removeItem(at:root)}
+        let out=root.appendingPathComponent("out"),err=root.appendingPathComponent("err")
+        fflush(stdout);fflush(stderr)
+        let savedOut=dup(1),savedErr=dup(2)
+        let o=open(out.path,O_CREAT|O_WRONLY|O_TRUNC,0o600),e=open(err.path,O_CREAT|O_WRONLY|O_TRUNC,0o600)
+        dup2(o,1);dup2(e,2);close(o);close(e)
+        let code=NashiCommandLine.run(arguments:["nashi-cli"])
+        fflush(stdout);fflush(stderr)
+        dup2(savedOut,1);dup2(savedErr,2);close(savedOut);close(savedErr)
+        XCTAssertEqual(code,64)
+        XCTAssertEqual(try Data(contentsOf:out),Data())
+        let usage=try String(contentsOf:err,encoding:.utf8)
+        for word in ["convert FORMAT","tool TOOL_ID","inspect FILE","catalog","dependencies","--options JSON","--json"] { XCTAssertTrue(usage.contains(word),word) }
+    }
 }

@@ -55,7 +55,7 @@ struct WheelItem {
             let effect=NSVisualEffectView(frame:NSRect(x:0,y:0,width:size,height:size));effect.material = .popover;effect.blendingMode = .behindWindow;effect.state = .active;effect.wantsLayer=true;effect.layer?.cornerRadius=size/2;effect.layer?.masksToBounds=true
             let view=WheelView(frame:effect.bounds);view.autoresizingMask=[.width,.height];effect.addSubview(view);p.contentView=effect
             view.onSelect = { [weak self] item in self?.apply(item) };view.onCancel = { [weak self] in self?.hide() }
-            view.onDragInputs = { [weak self] urls in guard let self else { return };self.show(inputs:urls,mode:self.mode,at:NSEvent.mouseLocation) }
+            view.onDragInputs = { [weak self] urls in guard let self else { return };self.show(inputs:urls,mode:self.mode,at:NSEvent.mouseLocation,keyboard:self.keyboardMode) }
             self.panel=p;self.wheel=view
             keyWindowObserver=NotificationCenter.default.addObserver(forName:NSWindow.didResignKeyNotification,object:p,queue:.main) { [weak self] _ in Task { @MainActor in if self?.keyboardMode == true { self?.hide() } } }
         }

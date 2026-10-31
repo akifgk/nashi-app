@@ -61,7 +61,8 @@ struct QRCodeReaderView:View {
             }.padding(20)
             Divider()
             if model.busy {
-                HStack(spacing:12) { ProgressView().controlSize(.small);VStack(alignment:.leading,spacing:4) { Text("Looking for little squares…").font(.system(size:12,weight:.semibold,design:.rounded));Text(model.label).font(.caption).foregroundStyle(.secondary).lineLimit(1) };Spacer();Button("Cancel") { model.token.cancel() }.buttonStyle(NashiButtonStyle(.secondary,compact:true)) }.padding(20)
+                // The engine's page progress ("scan.pdf, page 3") is app copy; a bare file name stays verbatim.
+                HStack(spacing:12) { ProgressView().controlSize(.small);VStack(alignment:.leading,spacing:4) { Text("Looking for little squares…").font(.system(size:12,weight:.semibold,design:.rounded));Group { if model.label.range(of:#", page [0-9]+$"#,options:.regularExpression) != nil { LText(model.label) } else { Text(model.label) } }.font(.caption).foregroundStyle(.secondary).lineLimit(1) };Spacer();Button("Cancel") { model.token.cancel() }.buttonStyle(NashiButtonStyle(.secondary,compact:true)) }.padding(20)
             }
             ScrollView {
                 VStack(alignment:.leading,spacing:14) {

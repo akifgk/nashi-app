@@ -119,7 +119,7 @@ struct ToolEditor:View {
                 }
                 ScrollView {
                     VStack(alignment:.leading,spacing:18) {
-                        Text(sideBySide ? L10n.text("MAKE IT YOURS"):"\(inputs.count>1 ? "\(inputs.count) FILES":input?.lastPathComponent ?? "")").font(.system(size:10,weight:.bold,design:.rounded)).tracking(0.8).foregroundStyle(.secondary).lineLimit(2)
+                        Text(verbatim:sideBySide ? L10n.text("MAKE IT YOURS"):inputs.count>1 ? L10n.uppercase("\(inputs.count) files"):input?.lastPathComponent ?? "").font(.system(size:10,weight:.bold,design:.rounded)).tracking(0.8).foregroundStyle(.secondary).lineLimit(2)
                         if isLoading { ProgressView("Preparing your file…").font(.caption) }
                         controls.disabled(isLoading || !readyToApply)
                         if let previewError { HStack { LText(previewError).font(.callout).foregroundStyle(.orange);Spacer();Button { self.previewError=nil } label:{Image(systemName:"xmark")}.accessibilityLabel("Dismiss preview error") } }
@@ -318,7 +318,7 @@ struct ToolEditor:View {
     var dimensionFields:some View { HStack { number("W",value:$width);number("H",value:$height);Text("px").foregroundStyle(.secondary) } }
     var imageControls:some View {
         VStack(alignment:.leading,spacing:12) {
-            HStack { Toggle("Show Original",isOn:$showOriginal).toggleStyle(.button);Spacer();Button("−") { previewZoom=max(0.25,previewZoom/1.25) };Text("\(Int(previewZoom*100))%").font(.caption.monospacedDigit());Button("+") { previewZoom=min(4,previewZoom*1.25) };Button("Fit") { previewZoom=1 } }
+            HStack { Toggle("Show Original",isOn:$showOriginal).toggleStyle(.button);Spacer();Button("−") { previewZoom=max(0.25,previewZoom/1.25) };Text(Int(previewZoom*100),format:.percent).font(.caption.monospacedDigit());Button("+") { previewZoom=min(4,previewZoom*1.25) };Button("Fit") { previewZoom=1 } }
             HStack { Button("Rotate Left") { options.rotation-=90;swap(&width,&height) };Button("Rotate Right") { options.rotation+=90;swap(&width,&height) };Toggle("Flip",isOn:$options.flipHorizontal) }
             dimensionFields
             Group {
@@ -382,7 +382,7 @@ struct ToolEditor:View {
             slider("Padding",value:Binding(get:{Double(options.imageFrame?.padding ?? 160)},set:{var f=options.imageFrame ?? .init();f.padding=Int($0);options.imageFrame=f}),range:0...400,unit:"px")
             slider("Corners",value:frame(\.cornerRadius),range:0...100,unit:"px")
             slider("Shadow",value:frame(\.shadowRadius),range:0...80,unit:"px")
-            HStack { ForEach(["Auto","1:1","16:9","4:5"],id:\.self) { label in Button(label) { var f=options.imageFrame ?? .init();let a=label.split(separator:":").compactMap{Double($0)};f.aspectRatio=a.count==2 ? a[0]/a[1]:nil;options.imageFrame=f } } }
+            HStack { ForEach(["Auto","1:1","16:9","4:5"],id:\.self) { label in Button(LocalizedStringKey(label)) { var f=options.imageFrame ?? .init();let a=label.split(separator:":").compactMap{Double($0)};f.aspectRatio=a.count==2 ? a[0]/a[1]:nil;options.imageFrame=f } } }
         }
     }
     var collageControls:some View {
@@ -454,7 +454,7 @@ struct ToolEditor:View {
             Text("\(index+1)").foregroundStyle(.secondary).frame(width:20);Image(nsImage:NSWorkspace.shared.icon(forFile:url.path)).resizable().frame(width:28,height:28);Text(url.lastPathComponent).lineLimit(1);Spacer()
             Button { inputs.swapAt(index,index-1) } label:{Image(systemName:"chevron.up")}.disabled(index==0)
             Button { inputs.swapAt(index,index+1) } label:{Image(systemName:"chevron.down")}.disabled(index==inputs.count-1)
-        } } }
+        } } }.disabled(state.working)
     }
     var pdfControls:some View {
         VStack(alignment:.leading,spacing:14) {
@@ -665,7 +665,7 @@ struct ToolEditor:View {
             applied.metadataRemoveAll=metadataRemoveAll
             if usesImageMetadata { var edit=ImageMetadataOptions();edit.removeAll=metadataRemoveAll;edit.updates=metadata.filter{originalMetadata[$0.key] != $0.value};edit.removals=metadataRemoveAll ? []:originalMetadata.keys.filter{metadata[$0]==nil};applied.imageMetadata=edit }
         }
-        state.execute(.tool(tool),options:applied,inputs:inputs)
+        previewError=nil;state.execute(.tool(tool),options:applied,inputs:inputs)
     }
     func saveOrganizedPDF() {
         guard canApply,!pdfEditor.pages.isEmpty else { return }
@@ -674,7 +674,7 @@ struct ToolEditor:View {
     }
     func detectRedactions(faces:Bool) {
         guard let input,readyToApply,!isLoading else { return }
-        let generation=editorGeneration,token=previewToken
+        let generation=editorGeneration,token=previewToken;previewError=nil
         Task { do {
             let regions=try await Task.detached { try ImageEngine.recognizedRegions(input,faces:faces,text:!faces) }.value
             try checkGeneration(generation,token:token);options.redactions += regions.map(\.rect)
@@ -712,10 +712,11 @@ struct ToolEditor:View {
         options.crop=r;width=Int(r.width);height=Int(r.height)
     }
     func previewChannel(_ channel:Int) {
-        guard let input,readyToApply,!isLoading else { return };let settings=options,token=previewToken,generation=editorGeneration
+        guard let input,readyToApply,!isLoading else { return };let settings=options,token=previewToken,generation=editorGeneration,key=previewKey
         Task { do {
             let url=try await Task.detached { try MediaEngine.previewChannel(input,channel:channel,options:settings,token:token) }.value
-            guard generation==editorGeneration,!token.isCancelled else { try? FileManager.default.removeItem(at:url.deletingLastPathComponent());return }
+            // A setting changed while the preview was being made: it no longer shows the current settings.
+            guard generation==editorGeneration,!token.isCancelled,key==previewKey else { try? FileManager.default.removeItem(at:url.deletingLastPathComponent());return }
             player?.pause();if let old=channelPreviewURL { try? FileManager.default.removeItem(at:old.deletingLastPathComponent()) };channelPreviewURL=url;playerReachedEnd=false;player=AVPlayer(url:url);processedPlayback=true;player?.play()
         } catch { if generation==editorGeneration,!token.isCancelled { previewError=error.localizedDescription } } }
     }
@@ -764,7 +765,7 @@ struct ToolEditor:View {
         guard options.start.isFinite,end.isFinite,options.start>=0,end>options.start,end<=duration else {
             previewError="Choose a valid start and end within the file’s duration.";return
         }
-        seek(options.start);playingRange=true;player?.play()
+        previewError=nil;seek(options.start);playingRange=true;player?.play()
     }
     func updatePlayhead(_ time:Double) {
         guard time.isFinite,!seeking else { return }
@@ -797,15 +798,17 @@ struct ToolEditor:View {
     }
     func playOriginal(play:Bool=true) { processedPlayback=false;processedWaveform=nil;processedDuration=nil;if let url=playbackURL ?? input { let time=playhead;player?.pause();player=AVPlayer(url:url);seek(time);if play { if time>=duration-0.001 { seek(0) };player?.play() } } }
     func processedPreview() {
-        guard let input,readyToApply,!isLoading else { return };var settings=options;let kind=tool,token=previewToken,generation=editorGeneration
+        guard let input,readyToApply,!isLoading else { return };var settings=options;let kind=tool,token=previewToken,generation=editorGeneration,key=previewKey
         if kind == .splitVideo { settings.joinSplitClips=true }
         previewBusy=true
         Task { do {
             let preview=try await MediaPreviewEngine.processedPreview(kind,input:input,options:settings,token:token)
             guard generation==editorGeneration,!token.isCancelled else { preview.removeTemporaryFiles();return }
+            // A setting changed while the preview was being made: it no longer shows the current settings.
+            guard key==previewKey else { preview.removeTemporaryFiles();previewBusy=false;return }
             processedDuration=(try? MediaEngine.inspect(preview.playbackURL).duration)
             player?.pause();if let old=channelPreviewURL { try? FileManager.default.removeItem(at:old.deletingLastPathComponent()) };channelPreviewURL=preview.playbackURL;playerReachedEnd=false;player=AVPlayer(url:preview.playbackURL);processedPlayback=true;player?.play()
-            if kind == .normalizeAudio { let url=preview.playbackURL;let peaks=try await Task.detached { try MediaPreviewEngine.waveformPeaks(url,token:token) }.value;try checkGeneration(generation,token:token);processedWaveform=peaks }
+            if kind == .normalizeAudio { let url=preview.playbackURL;let peaks=try await Task.detached { try MediaPreviewEngine.waveformPeaks(url,token:token) }.value;try checkGeneration(generation,token:token);if key==previewKey { processedWaveform=peaks } }
         } catch { if generation==editorGeneration,!token.isCancelled { previewError=error.localizedDescription } }
             if generation==editorGeneration,!token.isCancelled { previewBusy=false }
         }

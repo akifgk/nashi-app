@@ -698,9 +698,10 @@ public enum MediaEngine {
     private static func audioExtension(_ input: URL) -> String { let ext = input.pathExtension.lowercased(); return audioFormats.contains(ext) ? ext : "m4a" }
     private static func videoExtension(_ input: URL) -> String { let ext = input.pathExtension.lowercased(); return videoFormats.contains(ext) && ext != "gif" ? ext : "mp4" }
     private static func ffmpegColor(_ color: String, opaque: Bool = false) throws -> String {
-        let hex = color.hasPrefix("#") ? String(color.dropFirst()) : color
-        guard [6, 8].contains(hex.count), hex.allSatisfy(\.isHexDigit) else { throw NashiError.invalidInput("Use a six- or eight-digit hexadecimal color.") }
-        return "0x" + (opaque ? String(hex.prefix(6)) : hex)
+        // Same reader as image exports: #RGB, #RGBA, #RRGGBB or #RRGGBBAA, ASCII digits only.
+        guard let components = ImageEngine.parsedColor(color)?.components, components.count == 4 else { throw NashiError.invalidInput("Use a #RGB, #RGBA, #RRGGBB or #RRGGBBAA color.") }
+        let bytes = components.map { String(format: "%02X", Int(($0 * 255).rounded())) }
+        return "0x" + bytes[0..<3].joined() + (opaque || bytes[3] == "FF" ? "" : bytes[3])
     }
     private static func metadataArguments(_ metadata: [String: String]) -> [String] {
         metadata.sorted { $0.key < $1.key }.flatMap { ["-metadata", "\($0.key)=\($0.value)"] }

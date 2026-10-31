@@ -223,15 +223,28 @@ public sealed partial class MainWindow:Window
         if(chooseFilesButton is not null){L10n.Bind(chooseFilesButton,ContentControl.ContentProperty,files.Count==0?"Choose files":"Add or change files");if(files.Count==0){chooseFilesButton.Background=Theme.Primary;chooseFilesButton.Foreground=new SolidColorBrush(Color.FromRgb(43,54,28));}else{chooseFilesButton.SetResourceReference(Control.BackgroundProperty,"Surface");chooseFilesButton.SetResourceReference(Control.ForegroundProperty,"Ink");}}if(openWheelButton is not null)openWheelButton.Visibility=files.Count>0?Visibility.Visible:Visibility.Collapsed;list.Visibility=manage.Visibility=files.Count==0?Visibility.Collapsed:Visibility.Visible;actions.Children.Clear();garden.SetSelected(files.Count>0);
         BuildSelectionActions();
     }
+    // Tools, Convert and File actions: the wheel opens on the first one that has something for the selection, and Ctrl, Shift or Alt (as set in Settings) switch between them.
+    private IReadOnlyList<ToolChoice> WheelChoices(string mode)
+    {
+        if(files.Count==0)return [];
+        if(mode=="actions")return [new("share","Share","◉"),new("float","Float","▣"),new("copy","Copy","▱"),new("move","Move","↗"),new("copyPath","Copy Path","↪"),new("terminal","Terminal",">_")];
+        if(mode=="convert")return FeatureCatalog.Formats(files).Select(format=>new ToolChoice("convert:"+format,format.ToUpperInvariant(),"↗")).ToArray();
+        var tools=Choices().ToList();if(FeatureCatalog.Formats(files).Length>0)tools.Insert(0,new("convert","Convert","⇄"));return tools;
+    }
+    private static readonly string[] FileActionIds=["share","float","copy","move","copyPath","terminal"];
+    private async Task ChooseFromWheel(ToolChoice choice)
+    {
+        if(choice.Id=="convert")ShowConversionWheel();else if(FileActionIds.Contains(choice.Id))await PerformFileAction(choice.Id,files.ToArray());else await EditAsync(choice);
+    }
     private void ShowWheel()
     {
-        if(busy)return;var choices=Choices().ToList();if(FeatureCatalog.Formats(files).Length>0)choices.Insert(0,new("convert","Convert","⇄"));
-        if(choices.Count>0)new WheelWindow(this,choices,async choice=>{if(choice.Id=="convert")ShowConversionWheel();else await EditAsync(choice);}).Show();
+        if(busy)return;var mode=new[]{"tools","convert","actions"}.FirstOrDefault(m=>WheelChoices(m).Count>0);
+        if(mode is not null)new WheelWindow(this,WheelChoices(mode),async choice=>await ChooseFromWheel(choice),modes:WheelChoices,initialMode:mode).Show();
     }
     private void ShowConversionWheel()
     {
-        if(busy)return;var choices=FeatureCatalog.Formats(files).Select(format=>new ToolChoice("convert:"+format,format.ToUpperInvariant(),"↗")).ToArray();
-        if(choices.Length>0)new WheelWindow(this,choices,async choice=>await EditAsync(choice)).Show();
+        if(busy)return;var choices=WheelChoices("convert");
+        if(choices.Count>0)new WheelWindow(this,choices,async choice=>await ChooseFromWheel(choice),modes:WheelChoices,initialMode:"convert").Show();
     }
     private async Task EditAsync(ToolChoice choice)
     {
