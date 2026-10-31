@@ -286,7 +286,7 @@ enum PDFDocumentReconstruction {
             // Editable output has a white page, without the source's vector
             // background. Light PDF text must not become invisible on that page.
             if 1.05 / (luminance + 0.05) < 3 { return "#202020" }
-            return String(format: "#%02X%02X%02X", Int(components[0] * 255), Int(components[1] * 255), Int(components[2] * 255))
+            return String(format: "#%02X%02X%02X", Int((components[0] * 255).rounded()), Int((components[1] * 255).rounded()), Int((components[2] * 255).rounded()))
         } ?? "#000000"
         return TextStyle(family: family, size: (Double(font.pointSize) * 10).rounded() / 10, bold: traits.contains(.bold), italic: traits.contains(.italic), underline: (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0, color: hex)
     }
