@@ -1177,6 +1177,7 @@
   "Without .pdf. Leave empty for the default name.": "Uzantısız yazın (.pdf eklenir). Varsayılan ad için boş bırakın.",
   "Preview unavailable": "Önizleme yok",
   "No tools for this file type": "Bu dosya türü için araç yok",
+  "Not supported for links": "Bağlantılar için desteklenmiyor",
   "Details": "Ayrıntılar",
   "Copy details": "Ayrıntıları kopyala"
 }
