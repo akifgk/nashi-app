@@ -103,6 +103,14 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         await ProcessRunner.RunAsync(encoder,["-v","error","-f","lavfi","-i","testsrc2=size=128x72:rate=12:duration=2","-f","lavfi","-i","sine=duration=2:sample_rate=48000","-c:v","libx264","-c:a","aac",source]);
         var original=System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(source));
         var engine=new MediaEngine(encoder,probe);var progress=new List<OperationProgress>();
+        var odd=Path.Combine(directory,"Odd dimensions.mkv");await ProcessRunner.RunAsync(encoder,["-v","error","-f","lavfi","-i","testsrc=size=97x65:duration=0.2","-c:v","ffv1",odd]);
+        var oddInfo=await engine.InspectAsync(odd);Check(oddInfo.Video is {Width:97,Height:65},"Odd-dimension fixture was rounded before conversion");
+        foreach(var format in new[]{"mp4","mov","mkv","m4v"})
+        {
+            var padded=await engine.ConvertAsync([odd],format,directory,new());var paddedInfo=await engine.InspectAsync(padded[0]);
+            Check(paddedInfo.Video is {Width:98,Height:66}&&paddedInfo.Duration>0,"Odd video dimensions could not convert to "+format);
+        }
+        Check((await engine.InspectAsync(odd)).Video is {Width:97,Height:65},"Odd-dimension conversion changed the source");
         var reporter=new InlineProgress(p=>progress.Add(p));
         Check(Math.Abs((await engine.InspectAsync(source)).Video!.FrameRate-12)<.001,"Frame-by-frame preview lost actual source FPS");
         var trimmed=await engine.ToolAsync("trimVideo",[source],directory,new(){Start=.25,End=1.25},reporter);
@@ -119,6 +127,7 @@ if(Environment.GetEnvironmentVariable("NASHI_VERIFY_FFMPEG") is {} encoder && En
         var muted=await engine.ToolAsync("muteVideo",[source],directory,new());Check(!(await engine.InspectAsync(muted[0])).HasAudio,"Mute retained audio");
         var speed=await engine.ToolAsync("changeVideoSpeed",[source],directory,new(){Speed=2});Check((await engine.InspectAsync(speed[0])).Duration<1.3,"Speed duration is wrong");
         var crop=await engine.ToolAsync("cropVideo",[source],directory,new(){Regions=[new(0,0,64,40)]});var cropped=await engine.InspectAsync(crop[0]);Check(cropped.Video?.Width==64&&cropped.Video.Height==40,"Crop dimensions wrong");
+        var capped=await engine.InspectAsync((await engine.ConvertAsync([source],"mp4",directory,new(){Height=720}))[0]);var shrunk=await engine.InspectAsync((await engine.ConvertAsync([source],"mp4",directory,new(){Height=48}))[0]);Check(capped.Video?.Width==128&&capped.Video.Height==72&&shrunk.Video?.Height==48,"Maximum video height upscaled a smaller video");
         var clips=await engine.ToolAsync("splitVideo",[source],directory,new(){EqualClips=2});Check(clips.Count==2,"Split count wrong");
         foreach(var clip in clips)Check((await engine.InspectAsync(clip)).Duration<1.25,"Split interval wrong");
         var sourceDuration=(await engine.InspectAsync(source)).Duration;var tail=await engine.ToolAsync("splitVideo",[source],directory,new(){SplitInterval=sourceDuration/2-.01});Check(tail.Count==2,"A sub-0.05 s interval remainder failed the split instead of joining the last clip");

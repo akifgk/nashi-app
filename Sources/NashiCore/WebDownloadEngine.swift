@@ -104,13 +104,14 @@ public enum WebDownloadEngine {
             }
         }
         try Task.checkCancellation();try token.check()
+        // Confine the reported paths to staging before the size fit replaces them.
+        try transaction.record(results,in:area)
         if mode == .video,let maximumHeight {
             try await Task.detached {
                 try enforceVideoHeight(results,maximum:maximumHeight,directory:area.directory,token:token,progress:progress)
             }.value
         }
         progress(OperationProgress.indeterminate,"Finishing your file…")
-        try transaction.record(results,in:area)
         let output=try transaction.publish(token:token)
         progress(1,"Saved to \(destination.lastPathComponent)")
         return output

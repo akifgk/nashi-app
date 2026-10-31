@@ -28,6 +28,8 @@ do {
     if let i=paths.firstIndex(of:"--options"),i+1<paths.count {
         // Missing keys keep defaults via a JSON overlay encoded from defaults.
         guard var supplied=try JSONSerialization.jsonObject(with:Data(paths[i+1].utf8)) as? [String:Any] else { throw NashiError.invalidInput("Options must be a JSON object.") }
+        // The parser turns a too-large negative number into -infinity, which re-encoding raises on.
+        guard JSONSerialization.isValidJSONObject(supplied) else { throw NashiError.invalidInput("Options must contain only finite numbers.") }
         normalizeFileURLs(&supplied)
         var defaults=try JSONSerialization.jsonObject(with:JSONEncoder().encode(options)) as! [String:Any]
         let optionalDefaults:[String:Data]=[

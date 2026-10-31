@@ -194,6 +194,9 @@ function sortAttachmentNames(doc) {
 }
 async function load(base64) {check();let d;try{d=await PDFDocument.load(base64,{parseSpeed:Infinity,updateMetadata:false,throwOnInvalidObject:true});}catch(error){if(error instanceof PDFLib.EncryptedPDFError||String(error.message||error).startsWith('Input document to `PDFDocument.load` is encrypted.'))unsupported("encryption");throw error;}check();return d;}
 function setPageOrder(doc,pages) {
+ // Re-added pages hang off the root page-tree node, and emptied intermediate
+ // nodes are pruned. Keep what each page inherited from them, as pdf-lib's copier does.
+ for(const page of pages)for(const key of ["Resources","MediaBox","CropBox","Rotate"]){const value=page.node.getInheritableAttribute(name(key));if(value&&!page.node.get(name(key)))page.node.set(name(key),value);}
  while(doc.getPageCount()){check();doc.removePage(0);}
  for(const page of pages){check();doc.addPage(page);}
 }

@@ -76,7 +76,39 @@ public sealed class Toolchain(string directory,string? searchPath=null)
 public static class VerifiedDownload
 {
     public static Task FetchAsync(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token)=>FetchCore(uri,output,maximum,progress,token,null,TimeSpan.FromSeconds(60));
+    public static Task FetchAnyAsync(IReadOnlyList<Uri> uris,string output,long maximum,Action<double>? progress,CancellationToken token,Func<string,bool>? validator=null)=>FetchAnyCore(uris,output,maximum,progress,token,null,TimeSpan.FromSeconds(60),validator);
     internal static Task FetchForTest(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token,HttpMessageHandler handler,TimeSpan idle)=>FetchCore(uri,output,maximum,progress,token,handler,idle);
+    internal static Task FetchAnyForTest(IReadOnlyList<Uri> uris,string output,long maximum,Action<double>? progress,CancellationToken token,HttpMessageHandler handler,TimeSpan idle,Func<string,bool>? validator=null)=>FetchAnyCore(uris,output,maximum,progress,token,handler,idle,validator);
+    private static async Task FetchAnyCore(IReadOnlyList<Uri> uris,string output,long maximum,Action<double>? progress,CancellationToken token,HttpMessageHandler? handler,TimeSpan idle,Func<string,bool>? validator=null)
+    {
+        if(uris.Count==0)throw new ArgumentException("At least one download URI is required.");
+        Exception? last=null;
+        for(var index=0;index<uris.Count;index++)
+        {
+            token.ThrowIfCancellationRequested();
+            var temporary=output+"."+Guid.NewGuid().ToString("N")+".part";
+            try
+            {
+                await FetchCore(uris[index],temporary,maximum,progress,token,handler,idle);
+                if(validator is not null&&!validator(temporary))throw new InvalidDataException("Downloaded package validation failed for mirror: "+uris[index]);
+                File.Move(temporary,output);
+                return;
+            }
+            catch(Exception error)when(!token.IsCancellationRequested&&error is HttpRequestException or IOException or TimeoutException or InvalidDataException)
+            {
+                last=error;
+            }
+            finally
+            {
+                for(var d=0;d<3&&File.Exists(temporary);d++)
+                {
+                    try{File.Delete(temporary);break;}
+                    catch(IOException){await Task.Delay(50*(d+1),CancellationToken.None);}
+                }
+            }
+        }
+        throw last??new InvalidDataException("All download mirrors failed.");
+    }
     private static async Task FetchCore(Uri uri,string output,long maximum,Action<double>? progress,CancellationToken token,HttpMessageHandler? handler,TimeSpan idle)
     {
         if(uri.Scheme!="https"||!string.IsNullOrEmpty(uri.UserInfo))throw new InvalidDataException("An HTTPS download is required.");

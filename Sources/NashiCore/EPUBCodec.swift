@@ -24,6 +24,8 @@ enum EPUBCodec {
             try token.check()
             guard let page = pdf.page(at: index) else { continue }
             let bounds = PDFOfficeCodec.visualBounds(page)
+            // Checked before Int conversion; no page over 64,000 points fits the 32,000 pixel raster even at 36 DPI.
+            guard bounds.width.isFinite, bounds.height.isFinite, bounds.width <= 64000, bounds.height <= 64000 else { throw NashiError.failed("The PDF page is too large to render at this resolution.") }
             let width = max(1, Int(ceil(bounds.width))), height = max(1, Int(ceil(bounds.height)))
             let name = String(format: "page-%04d", index + 1)
             try autoreleasepool {

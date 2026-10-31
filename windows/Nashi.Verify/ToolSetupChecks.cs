@@ -24,6 +24,7 @@ internal static class ToolSetupChecks
             check(!new Toolchain(bundled).Ready,"Tools on PATH must stay unused without a search path");
             var found=new Toolchain(bundled,string.Join(Path.PathSeparator,"","relative",'"'+installed+'"'));
             check(found.Ready&&found.Executable("yt-dlp")==Path.Combine(installed,"yt-dlp.exe"),"Installed tools on the search path must be reused");
+            check(new WebDownload(found).FfmpegLocation==installed,"yt-dlp must use the FFmpeg found on the search path");
             check(found.InstallAsync().IsCompletedSuccessfully&&!Directory.Exists(bundled),"Tools on the search path must not be downloaded again");
             var previous=Environment.CurrentDirectory;Environment.CurrentDirectory=installed;
             try{check(!new Toolchain(bundled,".").Ready,"Relative search path entries must be ignored");}finally{Environment.CurrentDirectory=previous;}

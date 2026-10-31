@@ -320,11 +320,17 @@ enum PDFPlacedImages {
         let resources: CGPDFDictionaryRef
         let token: CancellationToken
         let depth: Int
+        /// Forms being scanned on this path, and a page-wide cap on form scans: a form
+        /// that draws itself, or a chain of forms each drawn several times, must not
+        /// expand exponentially.
+        let forms: [CGPDFStreamRef]
+        let budget: Budget
+        final class Budget { var forms = 0 }
         var transform: CGAffineTransform
         var stack: [CGAffineTransform] = []
         var images: [CGRect] = []
-        init(content: CGPDFContentStreamRef, resources: CGPDFDictionaryRef, transform: CGAffineTransform, token: CancellationToken, depth: Int) {
-            self.content = content; self.resources = resources; self.transform = transform; self.token = token; self.depth = depth
+        init(content: CGPDFContentStreamRef, resources: CGPDFDictionaryRef, transform: CGAffineTransform, token: CancellationToken, depth: Int, forms: [CGPDFStreamRef] = [], budget: Budget = Budget()) {
+            self.content = content; self.resources = resources; self.transform = transform; self.token = token; self.depth = depth; self.forms = forms; self.budget = budget
         }
         func scan() {
             let table = CGPDFOperatorTableCreate()!
@@ -354,7 +360,8 @@ enum PDFPlacedImages {
                 guard CGPDFDictionaryGetName(dictionary, "Subtype", &subtype), let subtype else { return }
                 if String(cString: subtype) == "Image" {
                     state.images.append(CGRect(x: 0, y: 0, width: 1, height: 1).applying(state.transform).standardized)
-                } else if String(cString: subtype) == "Form", state.depth < 16 {
+                } else if String(cString: subtype) == "Form", state.depth < 16, !state.forms.contains(stream), state.budget.forms < 10_000 {
+                    state.budget.forms += 1
                     var local: CGPDFDictionaryRef?
                     _ = CGPDFDictionaryGetDictionary(dictionary, "Resources", &local)
                     var matrix = CGAffineTransform.identity, array: CGPDFArrayRef?
@@ -364,7 +371,7 @@ enum PDFPlacedImages {
                     }
                     let childContent = CGPDFContentStreamCreateWithStream(stream, local ?? state.resources, state.content)
                     defer { CGPDFContentStreamRelease(childContent) }
-                    let child = Scanner(content: childContent, resources: local ?? state.resources, transform: matrix.concatenating(state.transform), token: state.token, depth: state.depth + 1)
+                    let child = Scanner(content: childContent, resources: local ?? state.resources, transform: matrix.concatenating(state.transform), token: state.token, depth: state.depth + 1, forms: state.forms + [stream], budget: state.budget)
                     child.scan(); state.images += child.images
                 }
             }

@@ -43,7 +43,7 @@ public static class ArchiveEngine
         var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);long copied=0;var index=0;
         foreach(var entry in entries)
         {
-            token.ThrowIfCancellationRequested();var name=entry.Key?.TrimEnd('/','\\');if(string.IsNullOrWhiteSpace(name))continue;
+            token.ThrowIfCancellationRequested();var name=entry.Key?.TrimEnd('/','\\');while(name?.StartsWith("./",StringComparison.Ordinal)==true)name=name[2..];if(string.IsNullOrWhiteSpace(name)||name==".")continue;
             var output=SafePaths.ArchiveEntry(folder,name);if(!names.Add(output)||!string.IsNullOrEmpty(entry.LinkTarget))throw new InvalidDataException("Archive contains duplicate paths or links.");
             if(entry.IsDirectory){Directory.CreateDirectory(output);continue;}Directory.CreateDirectory(Path.GetDirectoryName(output)!);
             using var source=entry.OpenEntryStream();using var target=new FileStream(output,FileMode.CreateNew);var buffer=new byte[81920];int count;

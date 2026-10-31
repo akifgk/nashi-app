@@ -83,4 +83,35 @@ final class WebDownloadTests:XCTestCase {
         let message=WebDownloadEngine.friendlyError("ERROR 403: https://example.org/private?token=secret")
         XCTAssertFalse(message.contains("secret"));XCTAssertFalse(message.contains("https://"))
     }
+    // F1920: the size fit replaced a reported file outside staging before record rejected it.
+    func testSizeFitNeverReplacesAReportedFileOutsideStaging() async throws {
+        let fm=FileManager.default,root=fm.temporaryDirectory.appendingPathComponent("nashi-web-confine-\(UUID().uuidString)",isDirectory:true)
+        try fm.createDirectory(at:root,withIntermediateDirectories:true)
+        addTeardownBlock { try? fm.removeItem(at:root) }
+        let plan=root.appendingPathComponent("plan.sh")
+        let tools=["yt-dlp":"out=\"\";prev=\"\"\nfor a in \"$@\"; do [ \"$prev\" = --output ] && out=\"$a\";prev=\"$a\"; done\nstage=$(dirname \"$out\")\n. '\(plan.path)'\n",
+                   "ffprobe":"for f; do :; done\nif grep -q H1080 \"$f\"; then h=1080; else h=480; fi\nprintf '{\"format\":{\"duration\":\"1\"},\"streams\":[{\"index\":0,\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":640,\"height\":%s}]}' $h\n",
+                   "ffmpeg":"for o; do :; done\nprintf H480 > \"$o\"\n","deno":"exit 0\n"]
+        for (name,body) in tools {
+            let tool=root.appendingPathComponent(name);try Data(("#!/bin/sh\n"+body).utf8).write(to:tool)
+            try fm.setAttributes([.posixPermissions:0o755],ofItemAtPath:tool.path)
+            let variable="NASHI_"+name.uppercased(),previous=ProcessInfo.processInfo.environment[variable]
+            setenv(variable,tool.path,1)
+            addTeardownBlock { if let previous { setenv(variable,previous,1) } else { unsetenv(variable) } }
+        }
+        let info=try WebDownloadEngine.parseMetadata(Data(#"{"formats":[{"height":1080}]}"#.utf8),url:URL(string:"https://example.org/watch")!)
+        let outside=root.appendingPathComponent("Outside/secret.mp4");try fm.createDirectory(at:outside.deletingLastPathComponent(),withIntermediateDirectories:true)
+        for (index,report) in [outside.path,"$stage/../../Outside/secret.mp4"].enumerated() {
+            try Data("H1080 original".utf8).write(to:outside)
+            try Data("printf H1080 > \"$stage/a.mp4\"\necho NASHI_FILE:\\\"$stage/a.mp4\\\"\necho NASHI_FILE:\\\"\(report)\\\"\n".utf8).write(to:plan)
+            let destination=root.appendingPathComponent("Downloads \(index)",isDirectory:true)
+            do { _=try await WebDownloadEngine.download(info,mode:.video,maximumHeight:720,destination:destination) { _,_ in };XCTFail("outside path accepted: \(report)") } catch {}
+            XCTAssertEqual(try String(contentsOf:outside,encoding:.utf8),"H1080 original",report)
+            XCTAssertEqual(try fm.contentsOfDirectory(atPath:destination.path),[],report)
+        }
+        // Control: a staged file over the limit is still fitted and published.
+        try Data("printf H1080 > \"$stage/a.mp4\"\necho NASHI_FILE:\\\"$stage/a.mp4\\\"\n".utf8).write(to:plan)
+        let files=try await WebDownloadEngine.download(info,mode:.video,maximumHeight:720,destination:root.appendingPathComponent("Downloads",isDirectory:true)) { _,_ in }
+        XCTAssertEqual(files.map(\.lastPathComponent),["a.mp4"]);XCTAssertEqual(try String(contentsOf:files[0],encoding:.utf8),"H480")
+    }
 }
