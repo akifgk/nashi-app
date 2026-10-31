@@ -87,6 +87,8 @@ enum XMPPacketEditor {
         }
         // ExifTool accepts packets beginning at xpacket or the xmpmeta root.
         // Remove Foundation's XML declaration from this standalone UTF-8 packet.
+        // A UTF-16 source would otherwise be serialized in its own encoding.
+        doc.characterEncoding="UTF-8"
         let serialized=String(decoding:doc.xmlData(options:[.nodeCompactEmptyElement]),as:UTF8.self)
         let packet=serialized.replacingOccurrences(of:"^<\\?xml[^?]*\\?>",with:"",options:.regularExpression)
         return Data(packet.trimmingCharacters(in:.whitespacesAndNewlines).utf8)

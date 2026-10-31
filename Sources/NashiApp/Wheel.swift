@@ -185,7 +185,7 @@ final class WheelView:NSView {
     }
     func updateSelection(_ point:NSPoint) { selected=items.indices.first{petal($0).contains(point)} }
     func updateAccessibility() {
-        setAccessibilityLabel(inputs.first?.isFileURL == false ? "Nashi web media wheel":"Nashi \(mode.rawValue) wheel")
+        setAccessibilityLabel(L10n.text(inputs.first?.isFileURL == false ? "Nashi web media wheel":"Nashi \(mode.rawValue) wheel"))
         let children=items.enumerated().map { index,item -> WheelAccessibilityItem in
             let child=WheelAccessibilityItem();child.setAccessibilityRole(.button);child.setAccessibilityEnabled(true);child.setAccessibilityLabel(L10n.text(item.operation?.title ?? item.title));child.setAccessibilityParent(self)
             if let window { child.setAccessibilityFrame(window.convertToScreen(convert(petal(index).bounds,to:nil))) }
@@ -203,7 +203,8 @@ final class WheelView:NSView {
         case 124,125: if !items.isEmpty { selected=((selected ?? -1)+1)%items.count }
         case 115: selected=items.isEmpty ? nil:0
         case 119: selected=items.isEmpty ? nil:items.count-1
-        case 36,49: if let selected { onSelect?(items[selected]) }
+        // A held key is one press: its auto-repeat must not pick the petal the keyboard wheel preselects.
+        case 36,49: if !event.isARepeat,let selected { onSelect?(items[selected]) }
         default: break
         }
     }

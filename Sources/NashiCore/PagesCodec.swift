@@ -95,7 +95,7 @@ enum PagesCodec {
             let width = number(setup["pageWidth"], 595.28), height = number(setup["pageHeight"], 841.89)
             let margins = ["topMargin", "rightMargin", "bottomMargin", "leftMargin"].map { "\(number(setup[$0], 56.69))pt" }.joined(separator: " ")
             var content = ""
-            if let header = model["header"] as? String, !header.isEmpty { content += "<header>\(escape(header))</header>" }
+            if let header = model["header"] as? String, !header.isEmpty { content += "<header>\(escape(header).replacingOccurrences(of: "\n", with: "<br/>"))</header>" }
             for block in model["blocks"] as? [[String: Any]] ?? [] {
                 try token.check()
                 if block["type"] as? String == "table" { content += table(block); continue }
@@ -121,7 +121,7 @@ enum PagesCodec {
                 }
                 content += "<p style=\"\(escape(css))\">\(runs.isEmpty ? "<br/>" : runs)</p>"
             }
-            if let footer = model["footer"] as? String, !footer.isEmpty { content += "<footer>\(escape(footer))</footer>" }
+            if let footer = model["footer"] as? String, !footer.isEmpty { content += "<footer>\(escape(footer).replacingOccurrences(of: "\n", with: "<br/>"))</footer>" }
             return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/><title>Pages document</title><style>@page{size:\(width)pt \(height)pt;margin:\(margins)}body{font:12pt Helvetica,Arial,sans-serif}p{white-space:pre-wrap;margin:0 0 8pt}table{border-collapse:collapse;page-break-inside:auto}td,th{border:1px solid #888;padding:4pt;white-space:pre-wrap}img{max-width:100%;height:auto}header,footer{margin:8pt 0}</style></head><body>\(content)</body></html>"
         }
         static func table(_ block: [String: Any]) -> String {
@@ -143,7 +143,7 @@ enum PagesCodec {
         }
         static func characterCSS(_ value: [String: Any]) -> String {
             var css = ""
-            if let font = value["fontName"] as? String { css += "font-family:'\(font.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: ";", with: ""))';" }
+            if let font = value["fontName"] as? String { css += "font-family:'\(String(String.UnicodeScalarView(font.unicodeScalars.filter { $0.value >= 0x20 && $0.value != 0x7f })).replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "").replacingOccurrences(of: ";", with: ""))';" }
             if let size = value["fontSize"] as? NSNumber, size.doubleValue > 0 { css += "font-size:\(size.doubleValue)pt;" }
             if let bold = value["bold"] as? Bool { css += "font-weight:\(bold ? "bold" : "normal");" }
             if let italic = value["italic"] as? Bool { css += "font-style:\(italic ? "italic" : "normal");" }
@@ -151,7 +151,10 @@ enum PagesCodec {
             if number(value["underline"], 0) > 0 { decoration.append("underline") }
             if number(value["strikethru"], 0) > 0 { decoration.append("line-through") }
             if !decoration.isEmpty { css += "text-decoration:\(decoration.joined(separator: " "));" }
-            if let color = value["fontColor"] as? [String: Any] { css += "color:rgb(\(Int(number(color["r"], 0) * 255)),\(Int(number(color["g"], 0) * 255)),\(Int(number(color["b"], 0) * 255)));" }
+            if let color = value["fontColor"] as? [String: Any] {
+                let channel = { (key: String) -> Int in let value = number(color[key], 0); return value.isFinite ? Int(min(max(value, 0), 1) * 255) : 0 }
+                css += "color:rgb(\(channel("r")),\(channel("g")),\(channel("b")));"
+            }
             return css
         }
         static func number(_ value: Any?, _ fallback: Double) -> Double { (value as? NSNumber)?.doubleValue ?? fallback }
@@ -223,7 +226,9 @@ private enum PagesDOCXReader {
                             else if ["drawing","pict"].contains(child.local), let image = try image(child) { runs.append(image) }
                         }
                     } else if item.local == "hyperlink" {
-                        let destination = item.attr("id").flatMap { relationships[$0] }
+                        var destination = item.attr("id").flatMap { relationships[$0] }
+                        // Word keeps a URL's #fragment in w:anchor, not in the relationship target.
+                        if let target = destination, !target.contains("#"), let anchor = item.attr("anchor")?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed), !anchor.isEmpty { destination = target + "#" + anchor }
                         for child in item.elements(nil) { try visit(child, link:destination) }
                     } else if ["sdt","sdtContent","ins","smartTag"].contains(item.local) { for child in item.elements(nil) { try visit(child, link:link) } }
                 }
@@ -242,6 +247,7 @@ private enum PagesDOCXReader {
                 let maximumColumns = 1024
                 for (rowIndex,row) in element.elements("tr").enumerated() {
                     var cells: [[String:Any]] = [], column = 0
+                    var horizontalAnchor: Int?
                     for cell in row.elements("tc") {
                         let properties = cell.first("tcPr")
                         let span: Int
@@ -262,18 +268,32 @@ private enum PagesDOCXReader {
                         if span > 1 { for _ in 1..<span { cells.append(["text":""]) } }
                         if let vertical = properties?.first("vMerge") {
                             if vertical.attr("val") == "restart" { activeVertical[column] = (rowIndex,span) }
-                            else if let origin = activeVertical[column] {
+                            // A continuation narrower or wider than its restart
+                            // cannot extend the restart's rectangle without
+                            // swallowing or overlapping neighbouring cells.
+                            else if let origin = activeVertical[column], origin.1 == span {
                                 if let index = merges.firstIndex(where: {$0["row"] == origin.0 && $0["column"] == column}) { merges[index]["rowCount"] = rowIndex - origin.0 + 1 }
                                 else { merges.append(["row":origin.0,"column":column,"rowCount":rowIndex-origin.0+1,"columnCount":origin.1]) }
-                            }
+                            } else { activeVertical[column] = nil }
                         } else { activeVertical[column] = nil }
-                        if span > 1 && properties?.first("vMerge") == nil { merges.append(["row":rowIndex,"column":column,"rowCount":1,"columnCount":span]) }
+                        // Legacy w:hMerge continuations join the restart cell
+                        // to their left; cells that also merge vertically stay out.
+                        var joinsHorizontal = false
+                        if properties?.first("vMerge") == nil, let horizontal = properties?.first("hMerge") {
+                            if horizontal.attr("val") == "restart" { horizontalAnchor = column }
+                            else if let anchor = horizontalAnchor {
+                                joinsHorizontal = true
+                                if let index = merges.firstIndex(where: {$0["row"] == rowIndex && $0["column"] == anchor}) { merges[index]["columnCount"] = column + span - anchor }
+                                else { merges.append(["row":rowIndex,"column":anchor,"rowCount":1,"columnCount":column + span - anchor]) }
+                            }
+                        } else { horizontalAnchor = nil }
+                        if span > 1 && properties?.first("vMerge") == nil && !joinsHorizontal { merges.append(["row":rowIndex,"column":column,"rowCount":1,"columnCount":span]) }
                         column += span
                     }
                     rows.append(cells)
                 }
                 let widths = element.first("tblGrid")?.elements("gridCol").map { ($0.number("w") ?? 2400) / 20 } ?? []
-                return ["type":"table","rows":rows,"merges":merges,"columnWidths":widths,"headerRows":element.elements("tr").prefix(while: {$0.first("trPr")?.first("tblHeader") != nil}).count]
+                return ["type":"table","rows":rows,"merges":merges,"columnWidths":widths,"headerRows":element.elements("tr").prefix(while: { row in row.first("trPr")?.first("tblHeader").map { !["0","false","off"].contains($0.attr("val") ?? "1") } ?? false }).count]
             }
             if ["sdt","sdtContent"].contains(element.local) {
                 // Block-level content controls are unwrapped by the caller's
@@ -357,5 +377,7 @@ private extension XMLElement {
     func first(_ name:String) -> XMLElement? {elements(name).first}
     func descendants(_ name:String) -> [XMLElement] {elements(nil).flatMap{($0.local == name ? [$0] : []) + $0.descendants(name)}}
     func attr(_ name:String) -> String? {(attributes ?? []).first{($0.localName ?? $0.name?.split(separator:":").last.map(String.init)) == name}?.stringValue}
-    func number(_ name:String) -> Double? {attr(name).flatMap(Double.init)}
+    // "NaN", "inf" and overflowing values such as "1e999" parse as non-finite
+    // Doubles, which JSONSerialization rejects with an uncatchable exception.
+    func number(_ name:String) -> Double? {attr(name).flatMap(Double.init).flatMap{$0.isFinite ? $0 : nil}}
 }

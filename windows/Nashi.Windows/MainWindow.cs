@@ -318,11 +318,11 @@ public sealed partial class MainWindow:Window
         catch(OperationCanceledException){toast.Close();L10n.SetText(status,"Setup cancelled.");}catch(Exception error){toast.Close();MessageBox.Show(this,L10n.Text(error.Message),L10n.Text("Setup couldn’t finish"));}finally{SetBusy(false);}
     }
     internal void OfferUpdate(WindowsUpdate candidate){update=candidate;L10n.Bind(updateButton,ContentControl.ContentProperty,"Update to "+candidate.Version);if(updateBanner is not null)updateBanner.Visibility=Visibility.Visible;tray?.UpdateAvailable(candidate.Version);}
-    private async Task CheckUpdatesAsync(bool user)
+    internal async Task CheckUpdatesAsync(bool user)
     {
         if(busy||checking)return;checking=true;updateButton.IsEnabled=false;if(user)L10n.SetText(status,"Checking for updates…");try
         {
-            if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)L10n.SetText(status,"You have the latest published Windows version.");return;}OfferUpdate(update);if(!user)return;}
+            if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)L10n.SetText(status,"You have the latest published Windows version.");return;}OfferUpdate(update);}if(!user)return;
             if(busy)return;
             if(MessageBox.Show(this,L10n.Text("Download, verify and install Nashi "+update.Version+"? The app will restart. No account or token is needed."),L10n.Text("Nashi update"),MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
             SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();

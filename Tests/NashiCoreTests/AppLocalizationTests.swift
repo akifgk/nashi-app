@@ -70,4 +70,12 @@ final class AppLocalizationTests:XCTestCase {
         XCTAssertTrue(AppLocalization.matches("Crop Image",query:"recadrer",language:"fr"))
         for code in ["png","MP4","Ctrl+Shift","⌘S","00:01.250"] { XCTAssertEqual(AppLocalization.text(code,language:"fr"),code) }
     }
+    func testFrenchSelectedCountIsSingularForZeroAndOne() {
+        // French uses the singular for 0 and 1 ("1 sélectionné"); Turkish never inflects after a number.
+        XCTAssertEqual(AppLocalization.text("1 selected",language:"fr"),"1 sélectionné")
+        XCTAssertEqual(AppLocalization.text("0 selected",language:"fr"),"0 sélectionné")
+        XCTAssertEqual(AppLocalization.text("2 selected",language:"fr"),"2 sélectionnés")
+        XCTAssertEqual(AppLocalization.text("1 selected",language:"tr"),"1 seçili")
+        XCTAssertEqual(AppLocalization.text("1 selected",language:"en"),"1 selected")
+    }
 }

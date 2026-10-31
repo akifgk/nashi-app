@@ -102,7 +102,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
                 else
                 {
                     arguments.AddRange(["-map","0:v:0","-map","0:a:0?"]);
-                    if (options.Width is not null || options.Height is not null) arguments.AddRange(["-vf",Scale(options)]);
+                    arguments.AddRange(["-vf",options.Width is not null || options.Height is not null?Scale(options):"pad=ceil(iw/2)*2:ceil(ih/2)*2"]);
                     arguments.AddRange(VideoEncoding(format,options));
                 }
             }
@@ -371,7 +371,7 @@ public sealed class MediaEngine(string ffmpeg, string ffprobe)
         "wmv"=>["-c:v","wmv2","-q:v",Number(25-o.Quality*22),"-c:a","wmav2"],
         _=>["-c:v","libx264","-preset","medium","-crf",Number(35-o.Quality*23),"-pix_fmt","yuv420p","-c:a","aac","-b:a",o.AudioBitrate+"k"]
     };
-    private static string Scale(MediaOptions o)=>$"scale={o.Width?.ToString(CultureInfo.InvariantCulture)??"-2"}:{o.Height?.ToString(CultureInfo.InvariantCulture)??"-2"}:force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2";
+    private static string Scale(MediaOptions o)=>$"scale={o.Width?.ToString(CultureInfo.InvariantCulture)??"-2"}:{(o.Height is {} h?$"'min({h.ToString(CultureInfo.InvariantCulture)},ih)'":"-2")}:force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2";
     private static string Tempo(double speed){var parts=new List<string>();while(speed>2){parts.Add("atempo=2");speed/=2;}while(speed<.5){parts.Add("atempo=0.5");speed*=2;}parts.Add("atempo="+Number(speed));return string.Join(',',parts);}
     private static MediaRange TimeRange(double start,double? end,double duration){var stop=end??duration;if(!double.IsFinite(start)||!double.IsFinite(stop)||start<0||Math.Round(stop-start,6)<.05||duration>0&&stop>duration+.001)throw new ArgumentException("Choose a valid time range.");return new(start,stop);}
     private static (int X,int Y,int Width,int Height) PixelRect(MediaRegion r,MediaInfo info){var w=info.Video?.Width??0;var h=info.Video?.Height??0;if(!new[]{r.X,r.Y,r.Width,r.Height}.All(double.IsFinite)||r.X<0||r.Y<0||r.Width<2||r.Height<2||r.X+r.Width>w||r.Y+r.Height>h)throw new ArgumentException("Choose a rectangle inside the video.");return((int)r.X,(int)r.Y,(int)r.Width,(int)r.Height);}

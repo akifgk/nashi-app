@@ -65,7 +65,7 @@ public enum MediaEngine {
             let swap = abs(rotation % 180) == 90
             // FFmpeg and AVPlayer apply the display matrix; editing coordinates use that canvas.
             let width = integer(item[swap ? "height" : "width"]), height = integer(item[swap ? "width" : "height"])
-            return MediaStream(index: integer(item["index"]) ?? 0, kind: item["codec_type"] as? String ?? "unknown", codec: item["codec_name"] as? String ?? "unknown", duration: number(item["duration"]), width: width, height: height, channels: integer(item["channels"]), sampleRate: integer(item["sample_rate"]), bitsPerSample: integer(item["bits_per_sample"]), bitsPerRawSample: integer(item["bits_per_raw_sample"]), sampleFormat: item["sample_fmt"] as? String, bitRate: integer(item["bit_rate"]), frameRate: fraction(item["avg_frame_rate"] as? String) ?? fraction(item["r_frame_rate"] as? String), isAttachedPicture: integer(disposition["attached_pic"]) == 1, rotation: rotation, metadata: metadata)
+            return MediaStream(index: integer(item["index"]) ?? 0, kind: item["codec_type"] as? String ?? "unknown", codec: item["codec_name"] as? String ?? "unknown", duration: number(item["duration"]), width: width, height: height, channels: count(item["channels"], upTo: 512), sampleRate: count(item["sample_rate"], upTo: Int(Int32.max)), bitsPerSample: integer(item["bits_per_sample"]), bitsPerRawSample: integer(item["bits_per_raw_sample"]), sampleFormat: item["sample_fmt"] as? String, bitRate: integer(item["bit_rate"]), frameRate: fraction(item["avg_frame_rate"] as? String) ?? fraction(item["r_frame_rate"] as? String), isAttachedPicture: integer(disposition["attached_pic"]) == 1, rotation: rotation, metadata: metadata)
         }
         let chapters = (root["chapters"] as? [[String: Any]] ?? []).enumerated().map { index, item in
             MediaChapter(index: index, start: number(item["start_time"]) ?? 0, end: number(item["end_time"]) ?? 0, metadata: tags(item["tags"]))
@@ -715,12 +715,14 @@ public enum MediaEngine {
         return ("-metadata", key)
     }
     private static func decimal(_ value: Double) -> String { String(format: "%.8f", locale: Locale(identifier: "en_US_POSIX"), value).replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression) }
+    // ffprobe can print "inf" or "nan"; treat them as unknown, as JSON cannot encode them.
     private static func number(_ value: Any?) -> Double? {
-        if let n = value as? NSNumber { return n.doubleValue }
-        if let s = value as? String { return Double(s) }
-        return nil
+        let result = (value as? NSNumber)?.doubleValue ?? (value as? String).flatMap(Double.init)
+        return result.flatMap { $0.isFinite ? $0 : nil }
     }
     private static func integer(_ value: Any?) -> Int? { number(value).flatMap { $0.isFinite && $0 >= Double(Int.min) && $0 < Double(Int.max) ? Int($0) : nil } }
+    // A damaged header can claim any layout; FFmpeg decodes at most 512 channels and stores rates as Int32.
+    private static func count(_ value: Any?, upTo limit: Int) -> Int? { integer(value).flatMap { (1...limit).contains($0) ? $0 : nil } }
     private static func fraction(_ value: String?) -> Double? {
         guard let value else { return nil }; let parts = value.split(separator: "/").compactMap { Double($0) }
         let result = parts.count == 2 && parts[1] != 0 ? parts[0] / parts[1] : Double(value)

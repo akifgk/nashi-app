@@ -35,6 +35,8 @@ public enum ImageEngine {
     }
 
     public static func write(_ image: CGImage, to url: URL, quality: Double = 0.8, metadata: CFDictionary? = nil, token: CancellationToken = .init()) throws {
+        // Both encoder paths take the same 0.01...1 range; FFmpeg's Int conversion traps on huge values.
+        let quality=max(0.01,min(1,quality))
         let ext=url.pathExtension.lowercased()
         let type: String
         switch ext {
@@ -50,7 +52,7 @@ public enum ImageEngine {
         }
         if (CGImageDestinationCopyTypeIdentifiers() as! [String]).contains(type),let destination=CGImageDestinationCreateWithURL(url as CFURL,type as CFString,1,nil) {
             var properties = (metadata as? [CFString:Any]) ?? [:]
-            properties[kCGImageDestinationLossyCompressionQuality] = max(0.01,min(1,quality))
+            properties[kCGImageDestinationLossyCompressionQuality] = quality
             properties[kCGImagePropertyOrientation] = 1
             CGImageDestinationAddImage(destination,image,properties as CFDictionary)
             guard CGImageDestinationFinalize(destination) else { throw NashiError.failed("Could not write \(url.lastPathComponent)") }
@@ -463,6 +465,8 @@ public enum ImageEngine {
         }
         let images=try inputs.map(load), columns=max(1,min(inputs.count,options.collageColumns)),rows=(inputs.count+columns-1)/columns
         let cellWidth=options.width ?? 600,cellHeight=options.height ?? 600,gap=max(0,options.padding)
+        // Bound each term first so the canvas size cannot overflow before canvas() rejects it.
+        guard (1...32000).contains(cellWidth),(1...32000).contains(cellHeight),gap<=32000 else { throw NashiError.invalidInput("Collage dimensions must be between 1 and 32,000 pixels.") }
         let width=columns*cellWidth+(columns+1)*gap,height=rows*cellHeight+(rows+1)*gap
         let ctx=try canvas(width,height);ctx.setFillColor(try validatedColor(options.backgroundColor));ctx.fill(CGRect(x:0,y:0,width:width,height:height))
         for (index,image) in images.enumerated() {

@@ -81,6 +81,7 @@ struct ToolEditor:View {
     @State private var qrResults:[String]=[]
     @State private var pdfEditor=PDFPageEditorState()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
 
     var input:URL? { inputs.first }
     var category:FileCategory { input.map(FileCategory.detect) ?? .other }
@@ -237,7 +238,7 @@ struct ToolEditor:View {
             HStack { Stepper("Equal clips: \(equalClips)",value:$equalClips,in:2...100);Button("Set") { options.equalClips=equalClips;options.splitPoints=(1..<equalClips).map{duration*Double($0)/Double(equalClips)} } }
             splitEditingControls
         case .videoSnapshots:
-            HStack { Text("\(options.snapshotTimes.count) selected");Spacer();Button("Add Frame") { options.snapshotTimes.append(playhead) }.help("Add frame at playhead (M)") }
+            HStack { LText("\(options.snapshotTimes.count) selected");Spacer();Button("Add Frame") { options.snapshotTimes.append(playhead) }.help("Add frame at playhead (M)") }
             if let source=playbackURL ?? input { LazyVGrid(columns:[GridItem(.adaptive(minimum:100))]) { ForEach(Array(options.snapshotTimes.enumerated()),id:\.offset) { index,time in VStack {
                 VideoFrameThumbnail(source:source,time:time).frame(height:70).cornerRadius(6)
                 HStack { Text(timeLabel(time)).font(.caption);Spacer();Button { options.snapshotTimes.remove(at:index) } label:{Image(systemName:"xmark.circle")} }
@@ -541,8 +542,8 @@ struct ToolEditor:View {
         func bytes(_ urls:[URL])->Int64 { urls.reduce(0) { $0+((try? FileManager.default.attributesOfItem(atPath:$1.path)[.size] as? NSNumber)?.int64Value ?? 0) } }
         let before=bytes(inputs),after=bytes(state.outputs)
         if before==after { return "Already optimized. Original quality retained." }
-        let size=ByteCountFormatter.string(fromByteCount:after,countStyle:.file)
-        return before>after && before>0 ? "\(size) · \(Int((1-Double(after)/Double(before))*100))% smaller":"Saved size: \(size)"
+        let size=after.formatted(.byteCount(style:.file).locale(locale))
+        return before>after && before>0 ? "\(size) · \(Int((1-Double(after)/Double(before))*100).formatted(.percent.locale(locale))) smaller":"Saved size: \(size)"
     }
     @ViewBuilder var mediaTimeline:some View {
         if duration>0 {
@@ -842,7 +843,8 @@ struct ToolEditor:View {
             string.wrappedValue=preservingOpacity ? ImageColorCodec.backgroundHex(NSColor($0)):hex($0)
         })
     }
-    func hex(_ color:Color)->String { guard let rgb=NSColor(color).usingColorSpace(.sRGB) else{return "#FFFFFF"};return String(format:"#%02X%02X%02X",Int(rgb.redComponent*255),Int(rgb.greenComponent*255),Int(rgb.blueComponent*255)) }
+    /// Rounds to the nearest byte like the frame/collage pickers; truncating turns a picked 10.99999 into 0A.
+    func hex(_ color:Color)->String { String(ImageColorCodec.backgroundHex(NSColor(color)).prefix(7)) }
     func timeLabel(_ time:Double)->String {
         guard time.isFinite,time>=0,time<Double(Int.max) else { return "—" }
         // Round to the displayed millisecond first so 59.9996 carries into the minute.
@@ -855,7 +857,7 @@ struct ToolEditor:View {
 struct WindowCloseButton:NSViewRepresentable {
     final class Coordinator:NSObject { @objc func close(_ sender:NSButton) { sender.window?.close() } }
     func makeCoordinator()->Coordinator { Coordinator() }
-    func makeNSView(context:Context)->NSButton { let button=NSButton(image:NSImage(systemSymbolName:"xmark.circle.fill",accessibilityDescription:"Close")!,target:context.coordinator,action:#selector(Coordinator.close(_:)));button.isBordered=false;button.setAccessibilityLabel("Close");return button }
+    func makeNSView(context:Context)->NSButton { let button=NSButton(image:NSImage(systemSymbolName:"xmark.circle.fill",accessibilityDescription:L10n.text("Close"))!,target:context.coordinator,action:#selector(Coordinator.close(_:)));button.isBordered=false;button.setAccessibilityLabel(L10n.text("Close"));return button }
     func updateNSView(_ nsView:NSButton,context:Context) { }
 }
 struct WindowDragRegion:NSViewRepresentable {

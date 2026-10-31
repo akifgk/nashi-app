@@ -1,4 +1,5 @@
 using Nashi.Core;
+using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text;
 using ImageMagick;
@@ -6,6 +7,18 @@ internal static class ParityChecks
 {
     public static void Run(Action<bool,string> check,string root)
     {
+        var characterDefaults=Path.Combine(root,"Character style defaults.docx");using(var archive=ZipFile.Open(characterDefaults,ZipArchiveMode.Create))
+        {
+            void Part(string name,string text){using var writer=new StreamWriter(archive.CreateEntry(name).Open(),new UTF8Encoding(false));writer.Write(text);}
+            Part("word/styles.xml","<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr><w:highlight w:val=\"yellow\"/><w:sz w:val=\"20\"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type=\"paragraph\" w:styleId=\"Body\"><w:rPr><w:highlight w:val=\"cyan\"/><w:sz w:val=\"44\"/></w:rPr></w:style><w:style w:type=\"character\" w:styleId=\"Parent\"><w:rPr><w:i/></w:rPr></w:style><w:style w:type=\"character\" w:styleId=\"Emphasis\"><w:basedOn w:val=\"Parent\"/></w:style></w:styles>");
+            Part("word/document.xml","<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:pPr><w:pStyle w:val=\"Body\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"Emphasis\"/></w:rPr><w:t>Inherited cyan</w:t></w:r><w:r><w:rPr><w:rStyle w:val=\"Missing\"/></w:rPr><w:t>Unknown style</w:t></w:r><w:r><w:rPr><w:rStyle w:val=\"Emphasis\"/><w:highlight w:val=\"green\"/></w:rPr><w:t>Direct green</w:t></w:r></w:p></w:body></w:document>");
+        }
+        using(var model=System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(OfficeDocuments.ReadDocx(characterDefaults))))
+        {
+            var runs=model.RootElement.GetProperty("blocks")[0].GetProperty("runs");
+            foreach(var index in new[]{0,1}){var character=runs[index].GetProperty("character");var color=character.GetProperty("backgroundColor");check(color.GetProperty("r").GetDouble()==0&&color.GetProperty("g").GetDouble()==1&&color.GetProperty("b").GetDouble()==1&&character.GetProperty("fontSize").GetDouble()==22,"A character style reapplied document defaults over paragraph formatting");}
+            check(runs[0].GetProperty("character").GetProperty("italic").GetBoolean()&&runs[2].GetProperty("character").GetProperty("backgroundColor").GetProperty("b").GetDouble()==0,"Character style inheritance or direct highlighting was lost");
+        }
         check(FeatureCatalog.Conversions.Count==46&&FeatureCatalog.ToolNames.Count==27,"Mac/Windows catalog count diverged");
         check(FeatureCatalog.Formats(["a.htm","b.html"]).SequenceEqual(new[]{"pdf"})&&FeatureCatalog.Tools(["a.html"]).Length==0,"HTML inputs lost their PDF route");
         check(FeatureCatalog.Formats(["a.jpeg","b.png"]).Contains("webp"),"Mixed image conversion intersection failed");
@@ -53,8 +66,23 @@ internal static class ParityChecks
         check(Invalid([..Encoding.ASCII.GetBytes("<p>caf"),0xe9,..Encoding.ASCII.GetBytes("</p>")])&&Invalid([..Encoding.Unicode.GetPreamble(),0x3c,0,0,0xd8,0x3e,0])&&Chapter([..utf32.GetPreamble(),..utf32.GetBytes("<p>\u011e&hellip;</p>")])=="\u011e\u2026"&&Chapter([..Encoding.UTF8.GetPreamble(),..Encoding.UTF8.GetBytes("<p>\u015e</p>")])=="\u015e","EPUB chapter bytes that are invalid in their encoding were replaced instead of refused, or a UTF-32 or UTF-8 byte order mark was misread");
         check(Chapter(new UTF32Encoding(false,false).GetBytes("<?xml version=\"1.0\"?><p>\u011e</p>"))=="\u011e"&&Chapter(new UTF32Encoding(true,false).GetBytes("<p>\u011e</p>"))=="\u011e"&&Chapter(Encoding.Unicode.GetBytes("<p>\u011e</p>"))=="\u011e"&&Chapter(Encoding.BigEndianUnicode.GetBytes("<p>\u011e</p>"))=="\u011e","EPUB chapters in UTF-32, or in UTF-16 without a declaration, and without a byte order mark were read as UTF-8");
         check(Chapter(Encoding.UTF8.GetBytes("<p><![CDATA[a&mdash;b]]>&mdash;<!-- &nbsp; --><?nashi &nbsp;?></p>"))=="a&mdash;b\u2014"&&OfficeDocuments.NumericEntities("<!-- &nbsp; --><?nashi &nbsp;?>")=="<!-- &nbsp; --><?nashi &nbsp;?>","Named entities inside CDATA, comments or processing instructions were rewritten");
+        foreach(var (flag,enabled,implicitType) in new[]{("1",true,false),("true",true,false),("on",true,false),("0",false,false),("false",false,false),("off",false,false),("1",true,true)})
+        {
+            var defaultDocx=Path.Combine(root,"Default paragraph "+flag+" "+implicitType+".docx");using(var archive=ZipFile.Open(defaultDocx,ZipArchiveMode.Create))
+            {
+                void Part(string name,string text){using var writer=new StreamWriter(archive.CreateEntry(name).Open(),new UTF8Encoding(false));writer.Write(implicitType?text.Replace(" w:type=\"paragraph\" w:default="," w:default=",StringComparison.Ordinal):text);}
+                Part("word/styles.xml","<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"Arial\"/><w:sz w:val=\"20\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"60\"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type=\"character\" w:default=\"1\" w:styleId=\"DefaultCharacter\"><w:rPr><w:sz w:val=\"198\"/></w:rPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"Parent\"><w:pPr><w:spacing w:after=\"240\"/></w:pPr><w:rPr><w:rFonts w:ascii=\"Courier New\"/><w:sz w:val=\"44\"/></w:rPr></w:style><w:style w:type=\"paragraph\" w:default=\""+flag+"\" w:styleId=\"CustomBody\"><w:basedOn w:val=\"Parent\"/><w:rPr><w:b/></w:rPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"Heading\"><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:rPr><w:sz w:val=\"36\"/></w:rPr></w:style></w:styles>");
+                Part("word/document.xml","<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>Default body</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after=\"0\"/></w:pPr><w:r><w:rPr><w:sz w:val=\"28\"/></w:rPr><w:t>Direct override</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Heading\"/></w:pPr><w:r><w:t>Explicit heading</w:t></w:r></w:p></w:body></w:document>");
+            }
+            using var model=System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(OfficeDocuments.ReadDocx(defaultDocx)));var blocks=model.RootElement.GetProperty("blocks");
+            var body=blocks[0].GetProperty("runs")[0].GetProperty("character");
+            check(body.GetProperty("fontSize").GetDouble()==(enabled?22:10)&&body.GetProperty("fontName").GetString()==(enabled?"Courier New":"Arial")&&blocks[0].GetProperty("paragraph").GetProperty("spaceAfter").GetDouble()==(enabled?12:3),"Word's default paragraph style flag '"+flag+"' lost inherited typography or spacing");
+            check(blocks[1].GetProperty("runs")[0].GetProperty("character").GetProperty("fontSize").GetDouble()==14&&blocks[1].GetProperty("paragraph").GetProperty("spaceAfter").GetDouble()==0,"A default paragraph style overrode direct formatting");
+            check(blocks[2].GetProperty("runs")[0].GetProperty("character").GetProperty("fontSize").GetDouble()==18&&blocks[2].GetProperty("paragraph").GetProperty("alignment").GetInt32()==2,"A default paragraph style replaced an explicit paragraph style");
+        }
         var preferences=new PreferencesStore(Path.Combine(root,"Preferences"));preferences.Save(preferences.Value with{Feedback=false,WheelScale=1.2,FloatBehavior="addToExisting"});preferences.SetProfile("jpg",new(Quality:.7));var persisted=new PreferencesStore(Path.Combine(root,"Preferences"));check(!persisted.Value.Feedback&&persisted.Value.WheelScale==1.2&&persisted.Profile("jpg").Quality==.7,"Windows settings/export defaults did not persist");try{persisted.Save(persisted.Value with{ToolsModifier="Shift"});throw new Exception("Conflicting drag shortcuts accepted");}catch(ArgumentException){check(true,"Drag shortcut collision validation");}
         var oversized=Path.Combine(root,"Oversized preferences");Directory.CreateDirectory(oversized);File.WriteAllText(Path.Combine(oversized,"preferences.json"),new string(' ',1_000_001));var oversizedSettings=new PreferencesStore(oversized);check(oversizedSettings.RecoveryNotice is not null&&oversizedSettings.Value.Language=="en"&&oversizedSettings.Value.Enabled,"Oversized settings crashed startup or did not fall back to defaults");
+        check(WebMediaPayload.Parse(null,null,"https://nvfile/C:/Program%20Files/NVIDIA%20Corporation/NVIDIA%20App/osc/index.html#/") is null&&WebMediaPayload.Parse("http://localhost/video.mp4") is null&&WebMediaPayload.Parse("http://[::1]/video.mp4") is null&&WebMediaPayload.Parse("http://[2001:db8::1]/video.mp4") is {Kind:"media"},"A local app page under the drag start point was treated as web media");
         check(WebMediaPayload.Parse("https://i.ytimg.com/vi/mXS5W7_kdzk/hqdefault.jpg") is {Kind:"youtube",Url:"https://www.youtube.com/watch?v=mXS5W7_kdzk"},"YouTube home thumbnail did not recover its video");
         check(WebMediaPayload.Parse(null,"<a href=https://youtu.be/mXS5W7_kdzk>Video</a>") is {Kind:"youtube",Url:"https://www.youtube.com/watch?v=mXS5W7_kdzk"},"Unquoted HTML video link was lost");
         check(WebMediaPayload.Parse(null,"<img src=https://cdn.example.invalid/photo.png>") is {Kind:"image"},"Unquoted HTML image source was lost");
@@ -90,6 +118,31 @@ internal static class ParityChecks
             {File.WriteAllBytes(streamed,bytes);LegacyTextCodec.ToUtf8Async(streamed,normalized).GetAwaiter().GetResult();check(LegacyTextCodec.Decode(bytes)==table&&File.ReadAllText(normalized)==table&&File.ReadAllBytes(normalized).Length==Encoding.UTF8.GetByteCount(table),"Streamed text normalization did not match Decode");}
         }
         finally{System.Globalization.CultureInfo.CurrentCulture=culture;LegacyTextCodec.SystemCodePages=codePages;}
+        foreach(var (color,rgb) in new[]{("black","0,0,0"),("blue","0,0,255"),("cyan","0,255,255"),("green","0,255,0"),("magenta","255,0,255"),("red","255,0,0"),("yellow","255,255,0"),("white","255,255,255"),("darkBlue","0,0,128"),("darkCyan","0,128,128"),("darkGreen","0,128,0"),("darkMagenta","128,0,128"),("darkRed","128,0,0"),("darkYellow","128,128,0"),("darkGray","128,128,128"),("lightGray","192,192,192")})
+        {
+            var highlighted=Path.Combine(root,"Highlight "+color+".docx");
+            using(var archive=ZipFile.Open(highlighted,ZipArchiveMode.Create))
+            {
+                using var writer=new StreamWriter(archive.CreateEntry("word/document.xml").Open(),new UTF8Encoding(false));
+                writer.Write("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:rPr><w:highlight w:val=\""+color+"\"/></w:rPr><w:t>Highlighted text</w:t></w:r></w:p></w:body></w:document>");
+            }
+            using var model=System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(OfficeDocuments.ReadDocx(highlighted)));
+            check(OfficeDocuments.ModelHtml(model.RootElement).Contains("background-color:rgb("+rgb+")"),"Word highlight color '"+color+"' was lost in the interchange");
+        }
+        var clearedHighlight=Path.Combine(root,"Cleared highlight.docx");using(var archive=ZipFile.Open(clearedHighlight,ZipArchiveMode.Create))
+        {
+            void Part(string name,string text){using var writer=new StreamWriter(archive.CreateEntry(name).Open(),new UTF8Encoding(false));writer.Write(text);}
+            Part("word/styles.xml","<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:style w:type=\"paragraph\" w:styleId=\"Marked\"><w:rPr><w:highlight w:val=\"yellow\"/></w:rPr></w:style></w:styles>");
+            Part("word/document.xml","<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:pPr><w:pStyle w:val=\"Marked\"/></w:pPr><w:r><w:t>Inherited</w:t></w:r><w:r><w:rPr><w:highlight w:val=\"none\"/></w:rPr><w:t>Cleared</w:t></w:r></w:p></w:body></w:document>");
+        }
+        using(var model=System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(OfficeDocuments.ReadDocx(clearedHighlight))))
+        {
+            var runs=model.RootElement.GetProperty("blocks")[0].GetProperty("runs");var inherited=runs[0].GetProperty("character").GetProperty("backgroundColor");
+            check(inherited.GetProperty("r").GetDouble()==1&&inherited.GetProperty("g").GetDouble()==1&&inherited.GetProperty("b").GetDouble()==0,"A Word style's highlight was not inherited");
+            check(runs[1].GetProperty("character").GetProperty("backgroundColor").ValueKind==System.Text.Json.JsonValueKind.Null,"Explicitly cleared Word highlighting remained inherited");
+            var paragraph=System.Xml.Linq.XDocument.Parse(OfficeDocuments.ModelHtml(model.RootElement)).Descendants("p").Single();var spans=paragraph.Elements("span").ToArray();
+            check(!paragraph.Attribute("style")!.Value.Contains("background-color:")&&spans[0].Attribute("style")!.Value.Contains("background-color:rgb(255,255,0)")&&!spans[1].Attribute("style")!.Value.Contains("background-color:"),"Explicitly cleared Word highlighting remained visible behind the run");
+        }
         var clipping=LegacyTextCodec.Clipping(Encoding.UTF8.GetBytes("<?xml version=\"1.0\"?><plist><dict><key>public.utf8-plain-text</key><data>VMO8cmvDp2U=</data></dict></plist>"));check(Encoding.UTF8.GetString(clipping.Bytes)=="Türkçe","Text clipping plist lost content");
         var binary=LegacyTextCodec.Clipping(System.Convert.FromBase64String("YnBsaXN0MDDRAQJfEBZwdWJsaWMudXRmOC1wbGFpbi10ZXh0aQBUAPwAcgBrAOcAZQAg2DzfUAgLJAAAAAAAAAEBAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAA3"));check(Encoding.UTF8.GetString(binary.Bytes)=="Türkçe 🍐","Binary text clipping lost Unicode");
         var docx=Path.Combine(root,"Styled.docx");using(var archive=ZipFile.Open(docx,ZipArchiveMode.Create))
@@ -99,6 +152,8 @@ internal static class ParityChecks
             Part("word/styles.xml","<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:style w:styleId=\"Heading\"><w:rPr><w:b/><w:sz w:val=\"36\"/></w:rPr></w:style></w:styles>");Part("word/_rels/document.xml.rels","<Relationships><Relationship Id=\"link1\" Target=\"https://example.com/pear\" TargetMode=\"External\"/><Relationship Id=\"header1\" Target=\"header1.xml\"/></Relationships>");Part("word/header1.xml","<w:hdr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:r><w:t>Fruit header</w:t></w:r></w:p></w:hdr>");
         }
         using(var model=System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(OfficeDocuments.ReadDocx(docx)))){var html=OfficeDocuments.ModelHtml(model.RootElement);check(html.Contains("font-weight:bold")&&html.Contains("font-size:18pt")&&html.Contains("font-style:italic")&&html.Contains("text-align:center"),"Pages interchange lost inherited typography or alignment");check(html.Contains("href=\"https://example.com/pear\"")&&html.Contains("Fruit header")&&html.Contains("size:612pt 792pt"),"Pages interchange lost hyperlinks, header or page dimensions");}
+        var controls=Path.Combine(root,"Controls.docx");using(var archive=ZipFile.Open(controls,ZipArchiveMode.Create)){using var writer=new StreamWriter(archive.CreateEntry("word/document.xml").Open(),new UTF8Encoding(false));writer.Write("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:sdt><w:sdtPr><w:docPartObj><w:docPartGallery w:val=\"Table of Contents\"/></w:docPartObj></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Contents entry</w:t></w:r></w:p></w:sdtContent></w:sdt><w:customXml><w:p><w:r><w:t>Custom block</w:t></w:r></w:p></w:customXml><w:tbl><w:tr><w:tc><w:sdt><w:sdtContent><w:p><w:r><w:t>Cell choice</w:t></w:r></w:p></w:sdtContent></w:sdt></w:tc></w:tr></w:tbl></w:body></w:document>");}
+        var controlled=System.Text.Json.JsonSerializer.Serialize(OfficeDocuments.ReadDocx(controls));check(controlled.Contains("Contents entry")&&controlled.Contains("Custom block")&&controlled.Contains("Cell choice"),"Pages interchange dropped text inside Word content controls");
         var srt="1\r\n00:00:01,005 --> 00:00:02,230\r\n<b>Türkçe 🍐</b>\r\n\r\n2\r\n00:00:03,000 --> 00:00:04,000\r\nSecond line\r\n";
         var vtt=SubtitleCodec.Convert(srt,"vtt");check(vtt.StartsWith("WEBVTT",StringComparison.Ordinal)&&vtt.Contains("00:00:01.005"),"SRT/VTT timestamps changed");check(SubtitleCodec.Parse(SubtitleCodec.Convert(vtt,"srt")).Length==2,"Subtitle round trip lost cues");check(SubtitleCodec.Convert(vtt,"txt").Contains("Türkçe 🍐")&&!SubtitleCodec.Convert(vtt,"txt").Contains("<b>"),"Subtitle plain text failed");
         var encodedVtt="WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nTom &amp; Jerry\n\n";
@@ -116,6 +171,10 @@ internal static class ParityChecks
         var nested=Directory.CreateDirectory(Path.Combine(root,"Zip folder","Nested"));File.WriteAllText(Path.Combine(nested.FullName,"Fruit.txt"),"Pear");var folderZip=DocumentEngine.Zip([nested.Parent!.FullName],root);var folderRestored=ArchiveEngine.Extract(folderZip,root)[0];check(File.ReadAllText(Path.Combine(folderRestored,"Zip folder","Nested","Fruit.txt"))=="Pear","Folder ZIP lost nested files");
         Directory.CreateDirectory(Path.Combine(nested.FullName,"Empty"));var withEmpty=DocumentEngine.Zip([nested.Parent!.FullName],root);foreach(var format in new[]{"tar","gz","zip"}){var restored=ArchiveEngine.Extract(ArchiveEngine.Convert(withEmpty,format,root)[0],root)[0];check(Directory.Exists(Path.Combine(restored,"Zip folder","Nested","Empty")),"Archive conversion lost an empty folder: "+format);}
         var rar=Path.Combine(root,"Stored.rar");StoredRar(rar);var rarOutput=ArchiveEngine.Extract(rar,root)[0];check(File.ReadAllText(Path.Combine(rarOutput,"Fruit.txt"))=="Nashi pear fixture","Stored RAR extraction failed");
+        var dotted=Path.Combine(root,"Dotted.tar.gz");using(var file=File.Create(dotted))using(var gz=new GZipStream(file,CompressionLevel.Optimal))using(var writer=new TarWriter(gz,TarEntryFormat.Gnu)){writer.WriteEntry(new GnuTarEntry(TarEntryType.Directory,"./"));writer.WriteEntry(new GnuTarEntry(TarEntryType.RegularFile,"./Fruit.txt"){DataStream=new MemoryStream(Encoding.UTF8.GetBytes("Pear"))});}
+        string? dottedText=null;try{dottedText=File.ReadAllText(Path.Combine(ArchiveEngine.Extract(dotted,root)[0],"Fruit.txt"));}catch(InvalidDataException){}check(dottedText=="Pear","Tarball with ./ entries was refused");
+        var dottedAttack=Path.Combine(root,"Dotted attack.tar");using(var file=File.Create(dottedAttack))using(var writer=new TarWriter(file,TarEntryFormat.Gnu))writer.WriteEntry(new GnuTarEntry(TarEntryType.RegularFile,"./../outside.txt"){DataStream=new MemoryStream([1])});
+        try{ArchiveEngine.Extract(dottedAttack,root);throw new Exception("Dotted traversal tarball accepted");}catch(InvalidDataException){check(true,"Dotted archive traversal protection");}
         var attack=Path.Combine(root,"Unsafe second.zip");using(var archive=ZipFile.Open(attack,ZipArchiveMode.Create)){using var stream=archive.CreateEntry("../outside.txt").Open();stream.WriteByte(1);}
         try{ArchiveEngine.Extract(attack,root);throw new Exception("Traversal archive accepted");}catch(InvalidDataException){check(true,"New archive traversal protection");}
         var svg=Path.Combine(root,"Static.svg");File.WriteAllText(svg,"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"96\" height=\"64\"><rect width=\"96\" height=\"64\" fill=\"#E5BC59\"/></svg>");

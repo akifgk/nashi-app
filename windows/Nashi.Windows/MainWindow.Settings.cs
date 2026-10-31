@@ -6,7 +6,14 @@ public sealed partial class MainWindow
     private string[]? pendingLaunch;private System.Windows.Threading.DispatcherTimer? launchTimer;
     internal void AcceptLaunch(string[] paths)
     {
-        ShowMain();if(paths.Length==0)return;if(busy||!DesktopGeometry.IsInteractive(this)){pendingLaunch=paths;launchTimer??=new(){Interval=TimeSpan.FromMilliseconds(200)};launchTimer.Stop();launchTimer.Tick-=AcceptPending;launchTimer.Tick+=AcceptPending;launchTimer.Start();return;}files.Clear();Add(paths);ShowLibrary(false);
+        if(!DesktopGeometry.IsInteractive(this))
+        {
+            var openModal=Application.Current?.Windows.OfType<Window>().LastOrDefault(w=>w!=this&&w.IsVisible&&(w.Owner==this||!w.IsEnabled));
+            if(openModal is not null){if(openModal.WindowState==WindowState.Minimized)openModal.WindowState=WindowState.Normal;openModal.Activate();}
+            else ShowMain();
+        }
+        else ShowMain();
+        if(paths.Length==0)return;if(busy||!DesktopGeometry.IsInteractive(this)){pendingLaunch=paths;launchTimer??=new(){Interval=TimeSpan.FromMilliseconds(200)};launchTimer.Stop();launchTimer.Tick-=AcceptPending;launchTimer.Tick+=AcceptPending;launchTimer.Start();return;}files.Clear();Add(paths);ShowLibrary(false);
     }
     private void AcceptPending(object? sender,EventArgs e){if(busy||!DesktopGeometry.IsInteractive(this))return;launchTimer?.Stop();if(pendingLaunch is {} paths){pendingLaunch=null;AcceptLaunch(paths);}}
     private TrayHost? tray;private bool quitting;
