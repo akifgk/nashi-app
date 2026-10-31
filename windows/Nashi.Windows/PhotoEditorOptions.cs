@@ -13,20 +13,27 @@ public sealed partial class ToolEditor
     // A finished blur cover shows the real blurred pixels, computed exactly as the export does.
     // The frosted placeholder shows at once; the real blur is computed off the UI thread and applied only if
     // the area and the chosen style are still the same when it is ready.
+    // At most two blurs run at once, and a request whose area was redrawn or restyled meanwhile is skipped before it starts.
+    private sealed class BlurRequest{internal volatile bool Stale;}
+    private static readonly SemaphoreSlim blurGate=new(2,2);
     private void ApplyRedactFill(Rectangle area)
     {
+        if(area.Tag is BlurRequest previous)previous.Stale=true;
         area.Fill=RedactFill();area.Tag=null;
         if(redactionStyle.SelectedItem as string!="blur"||bitmap is not {IsFrozen:true} source||ReferenceEquals(area,activeRectangle)||area.Width<1||area.Height<1)return;
         var x=(int)Math.Clamp(Canvas.GetLeft(area),0,source.PixelWidth-1);var y=(int)Math.Clamp(Canvas.GetTop(area),0,source.PixelHeight-1);
-        var w=(int)Math.Clamp(area.Width,1,source.PixelWidth-x);var h=(int)Math.Clamp(area.Height,1,source.PixelHeight-y);var request=area.Tag=new object();
-        Task.Run(()=>
+        var w=(int)Math.Clamp(area.Width,1,source.PixelWidth-x);var h=(int)Math.Clamp(area.Height,1,source.PixelHeight-y);var request=new BlurRequest();area.Tag=request;
+        Task.Run(async()=>
         {
+            await blurGate.WaitAsync();
             try
             {
+                if(request.Stale)return null;
                 var crop=new CroppedBitmap(source,new Int32Rect(x,y,w,h));
                 var brush=new ImageBrush(ImageEngine.FromPng(Nashi.Core.PhotoCodec.BlurRegion(ImageEngine.PngBytes(crop),Math.Max(14,Math.Min(w,h)/5)))){Stretch=Stretch.Fill};brush.Freeze();return (Brush?)brush;
             }
             catch(Exception error)when(error is ArgumentException or InvalidOperationException or IOException or NotSupportedException){return null;}
+            finally{blurGate.Release();}
         }).ContinueWith(task=>{if(task.IsCompletedSuccessfully&&task.Result is {} brush&&ReferenceEquals(area.Tag,request)&&redactionStyle.SelectedItem as string=="blur")area.Fill=brush;},TaskScheduler.FromCurrentSynchronizationContext());
     }
     private Brush RedactFill()
