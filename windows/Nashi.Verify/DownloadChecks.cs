@@ -37,7 +37,7 @@ internal static class DownloadChecks
             var secretPort=((IPEndPoint)secret.LocalEndpoint).Port;
             using(var strict=new PublicOnlyProxy())
             {
-                foreach(var target in new[]{"localhost","127.0.0.1","10.0.0.5","192.168.1.9","169.254.169.254","[::1]"})
+                foreach(var target in new[]{"localhost","127.0.0.1","10.0.0.5","192.168.1.9","169.254.169.254","198.18.0.1","198.19.255.1","[::1]"})
                 {
                     var answer=await ProxyRequest(strict,$"CONNECT {target}:{secretPort} HTTP/1.1\r\nHost: {target}\r\n\r\n");
                     check(answer.StartsWith("HTTP/1.1 403"),"Proxy let CONNECT reach "+target);
@@ -52,7 +52,8 @@ internal static class DownloadChecks
             check(connected.StartsWith("HTTP/1.1 200")&&await Task.WhenAny(accept,Task.Delay(3000))==accept,"Proxy did not connect an allowed target");
         }
         finally{secret.Stop();}
-        foreach(var name in new[]{"http://127.1/a","http://2130706433/a","http://0x7f.1/a","http://167772161/a"})try{WebDownload.Validate(name);check(false,"Short or numeric loopback form accepted: "+name);}catch(ArgumentException){check(true,"Short and numeric IPv4 forms of private addresses are refused");}
+        foreach(var name in new[]{"http://127.1/a","http://2130706433/a","http://0x7f.1/a","http://167772161/a","http://198.18.0.1/a","http://198.19.255.1/a"})try{WebDownload.Validate(name);check(false,"Short or numeric loopback form accepted: "+name);}catch(ArgumentException){check(true,"Short and numeric IPv4 forms of private addresses are refused");}
+        check(WebDownload.IsPrivate(IPAddress.Parse("198.18.0.1"))&&WebDownload.IsPrivate(IPAddress.Parse("198.19.255.255"))&&!WebDownload.IsPrivate(IPAddress.Parse("198.17.255.255"))&&!WebDownload.IsPrivate(IPAddress.Parse("198.20.0.1")),"The 198.18.0.0/15 benchmarking range is private and its neighbours are not");
         foreach(var name in new[]{"http://localhost./a","http://app.localhost./a","http://printer.local./a"})try{WebDownload.Validate(name);check(false,"Trailing-dot local name accepted: "+name);}catch(ArgumentException){check(true,"Trailing-dot local names are refused");}
         var culture=System.Globalization.CultureInfo.CurrentCulture;
         try

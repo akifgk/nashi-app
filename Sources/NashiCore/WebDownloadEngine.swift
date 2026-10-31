@@ -43,7 +43,7 @@ public enum WebDownloadEngine {
         if inet_aton(name,&v4) != 0 {
             let a=UInt32(bigEndian:v4.s_addr)
             let first=a>>24,second=(a>>16)&0xff
-            return first == 0 || first == 10 || first == 127 || (first == 169 && second == 254) || (first == 172 && (16...31).contains(second)) || (first == 192 && second == 168) || (first == 100 && (64...127).contains(second))
+            return first == 0 || first == 10 || first == 127 || (first == 169 && second == 254) || (first == 172 && (16...31).contains(second)) || (first == 192 && second == 168) || (first == 100 && (64...127).contains(second)) || (first == 198 && (18...19).contains(second))
         }
         var v6=in6_addr()
         if inet_pton(AF_INET6,name,&v6) == 1 {
