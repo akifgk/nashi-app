@@ -56,11 +56,13 @@ enum EPUBCodec {
         let root = work.appendingPathComponent("EPUB contents", isDirectory: true)
         try ArchiveCodec.extract(input, into: root, token: token)
         let container = root.appendingPathComponent("META-INF/container.xml")
+        try rejectEntityDeclarations(container)
         let xml = try XMLDocument(contentsOf: container, options: [.nodeLoadExternalEntitiesNever])
         guard let opfPath = try xml.nodes(forXPath: "//*[local-name()='rootfile']/@full-path").first?.stringValue else {
             throw NashiError.invalidInput("The EPUB has no package document.")
         }
         let opf = try ArchiveCodec.safeURL(opfPath, inside: root)
+        try rejectEntityDeclarations(opf)
         let package = try XMLDocument(contentsOf: opf, options: [.nodeLoadExternalEntitiesNever])
         var manifest: [String: URL] = [:]
         var styles = ""
@@ -134,8 +136,10 @@ enum EPUBCodec {
             manifest += "<item id=\"image\(imageIndex)\" href=\"\(name)\" media-type=\"\(mime)\"/>"
         }
         let body = try html.nodes(forXPath: "//*[local-name()='body']").first
-        let content = (body?.children ?? []).map(\.xmlString).joined()
-        let style = try html.nodes(forXPath: "//*[local-name()='style']").map(\.xmlString).joined()
+        // The HTML parser turns references such as &#12; into characters XML
+        // forbids; one of them would leave the whole book unreadable.
+        let content = xmlCharacters((body?.children ?? []).map(\.xmlString).joined())
+        let style = xmlCharacters(try html.nodes(forXPath: "//*[local-name()='style']").map(\.xmlString).joined())
         let escapedTitle = DocumentText.escapeXML(title)
         let xhtml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\"><head><title>\(escapedTitle)</title>\(style)</head><body>\(content)</body></html>"
         try xhtml.write(to: oebps.appendingPathComponent("book.xhtml"), atomically: true, encoding: .utf8)
@@ -148,13 +152,25 @@ enum EPUBCodec {
         try ProcessRunner.run(URL(fileURLWithPath: "/usr/bin/zip"), ["-q", "-r", "-X", output.path, "META-INF", "OEBPS"], directory: work, token: token)
     }
 
+    private static func xmlCharacters(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.filter { $0.value == 9 || $0.value == 10 || $0.value == 13 || ($0.value >= 0x20 && $0.value != 0xfffe && $0.value != 0xffff) }))
+    }
+
     private static func isInside(_ url: URL, root: URL) -> Bool {
         let path = url.resolvingSymlinksInPath().path, base = root.resolvingSymlinksInPath().path
         return path == base || path.hasPrefix(base + "/")
     }
 
+    /// XMLDocument expands internal entities, so nested declarations in a
+    /// tiny EPUB part can amplify into an unbounded document.
+    private static func rejectEntityDeclarations(_ url: URL) throws {
+        guard DocumentText.declaresXMLEntities(try Data(contentsOf: url)) else { return }
+        throw NashiError.invalidInput("The EPUB contains XML entity declarations, which are not supported.")
+    }
+
     private static func chapterDocument(_ url: URL) throws -> XMLDocument {
         let options: XMLNode.Options = [.nodePreserveWhitespace, .nodeLoadExternalEntitiesNever]
+        try rejectEntityDeclarations(url)
         // EPUB chapters are XML. Let the XML parser honor their declaration
         // (or XML's UTF-8 default) before tolerating older HTML markup. The
         // URL-based HTML parser can otherwise guess a legacy encoding and

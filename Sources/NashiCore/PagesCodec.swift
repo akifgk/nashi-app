@@ -183,7 +183,7 @@ private enum PagesDOCXReader {
         let defaultParagraph = paragraph(defaults?.first("pPrDefault")?.first("pPr"))
         let relationships = try relationMap(package.appendingPathComponent("word/_rels/document.xml.rels"))
         let reader = Reader(package: package, relationships: relationships, styles: styles, defaultCharacter: defaultCharacter, defaultParagraph: defaultParagraph, token: token)
-        var model: [String: Any] = ["blocks": try body.elements(nil).compactMap { try reader.block($0) }]
+        var model: [String: Any] = ["blocks": try blockElements(body).compactMap { try reader.block($0) }]
         if let section = body.first("sectPr") {
             var page: [String: Any] = [:]
             if let size = section.first("pgSz") { if let w = size.number("w") { page["pageWidth"] = w / 20 }; if let h = size.number("h") { page["pageHeight"] = h / 20 } }
@@ -254,7 +254,8 @@ private enum PagesDOCXReader {
                         guard column <= maximumColumns - span else {
                             throw NashiError.invalidInput("This Word document contains a table wider than the supported limit of \(maximumColumns) columns. It could not be converted to Pages.")
                         }
-                        let value = cell.elements("p").map { paragraph in paragraph.descendants("t").map(text).joined() }.joined(separator:"\n")
+                        let cellParagraphs = blockElements(cell).filter { $0.local == "p" }
+                        let value = cellParagraphs.map { $0.descendants("t").map(text).joined() }.joined(separator:"\n")
                         var cellModel: [String:Any] = ["text":value]
                         if let fill = properties?.first("shd")?.attr("fill"), let color = color(fill) { cellModel["formatting"] = ["fill":["kind":"color","color":color]] }
                         cells.append(cellModel)
@@ -298,7 +299,7 @@ private enum PagesDOCXReader {
     }
     static func xml(_ url: URL) throws -> XMLDocument {
         let bytes = try Data(contentsOf:url)
-        guard bytes.count <= 50_000_000, !String(decoding:bytes,as:UTF8.self).contains("<!ENTITY") else {throw NashiError.invalidInput("The document XML is not supported.")}
+        guard bytes.count <= 50_000_000, !String(decoding:bytes,as:UTF8.self).contains("<!ENTITY"), !DocumentText.declaresXMLEntities(bytes) else {throw NashiError.invalidInput("The document XML is not supported.")}
         return try XMLDocument(data:bytes,options:[.nodePreserveWhitespace,.nodeLoadExternalEntitiesNever])
     }
     static func relationMap(_ url: URL) throws -> [String:String] {
@@ -318,6 +319,10 @@ private enum PagesDOCXReader {
         let raw=element.xmlString
         guard let open=raw.firstIndex(of:">"),let close=raw.lastIndex(of:"<"),open<close else{return ""}
         return DocumentText.decodeEntities(String(raw[raw.index(after:open)..<close]))
+    }
+    /// Block-level content controls and custom XML only wrap ordinary paragraphs and tables.
+    static func blockElements(_ parent: XMLElement) -> [XMLElement] {
+        parent.elements(nil).flatMap { ["sdt","sdtContent","customXml"].contains($0.local) ? blockElements($0) : [$0] }
     }
     static func character(_ element: XMLElement?) -> [String:Any] {
         guard let element else{return [:]};var result:[String:Any]=[:]

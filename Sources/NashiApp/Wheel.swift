@@ -55,7 +55,7 @@ struct WheelItem {
             let effect=NSVisualEffectView(frame:NSRect(x:0,y:0,width:size,height:size));effect.material = .popover;effect.blendingMode = .behindWindow;effect.state = .active;effect.wantsLayer=true;effect.layer?.cornerRadius=size/2;effect.layer?.masksToBounds=true
             let view=WheelView(frame:effect.bounds);view.autoresizingMask=[.width,.height];effect.addSubview(view);p.contentView=effect
             view.onSelect = { [weak self] item in self?.apply(item) };view.onCancel = { [weak self] in self?.hide() }
-            view.onDragInputs = { [weak self] urls in guard let self else { return };self.show(inputs:urls,mode:self.mode,at:NSEvent.mouseLocation) }
+            view.onDragInputs = { [weak self] urls in guard let self else { return };self.show(inputs:urls,mode:self.mode,at:NSEvent.mouseLocation,keyboard:self.keyboardMode) }
             self.panel=p;self.wheel=view
             keyWindowObserver=NotificationCenter.default.addObserver(forName:NSWindow.didResignKeyNotification,object:p,queue:.main) { [weak self] _ in Task { @MainActor in if self?.keyboardMode == true { self?.hide() } } }
         }
@@ -94,6 +94,8 @@ struct WheelItem {
             case .open:NSWorkspace.shared.open(media.primaryURL)
             };return
         }
+        // A job may have started while the wheel was open; keep its selection.
+        guard !state.working else { return }
         state.inputs=inputs;if let action=item.action { state.perform(action) };if let op=item.operation { state.select(op) }
     }
     func hide() { keyboardMode=false;panel?.orderOut(nil);if let monitor=keyMonitor { NSEvent.removeMonitor(monitor);keyMonitor=nil } }
@@ -209,7 +211,10 @@ final class WheelView:NSView {
     private func incoming(_ sender:NSDraggingInfo)->Bool {
         let urls=WebLinkPayload.urls(from:sender.draggingPasteboard)
         guard !urls.isEmpty else { return false }
-        if urls != inputs { onDragInputs?(urls) };updateSelection(convert(sender.draggingLocation,from:nil));return true
+        if urls != inputs { onDragInputs?(urls) }
+        // show() refuses new inputs while a job runs; the petals still belong to the old ones.
+        guard urls == inputs else { selected=nil;return false }
+        updateSelection(convert(sender.draggingLocation,from:nil));return true
     }
     override func draggingEntered(_ sender:NSDraggingInfo)->NSDragOperation { incoming(sender) ? .copy:[] }
     override func draggingUpdated(_ sender:NSDraggingInfo)->NSDragOperation { incoming(sender) ? .copy:[] }
