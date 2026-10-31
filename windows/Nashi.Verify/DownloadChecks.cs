@@ -19,7 +19,7 @@ internal static class DownloadChecks
         try
         {
             var port=((IPEndPoint)listener.LocalEndpoint).Port;
-            using var handler=WebDownload.PublicOnlyHandler();using var client=new HttpClient(handler);
+            using var handler=WebDownload.PublicOnlyHandler();handler.UseProxy=false;using var client=new HttpClient(handler);
             try{await client.GetAsync($"http://localhost:{port}/");check(false,"A name that resolves to this computer was reached");}
             catch(HttpRequestException error){check(!listener.Pending()&&error.ToString().Contains("private network"),"A name that resolves to this computer is refused before the connection is made");}
         }
