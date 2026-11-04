@@ -141,7 +141,7 @@ internal sealed class GlobalDropWheel:Window
     private const double HiddenOpacity=.02;
     internal bool Revealed{get;private set;}
     private void Reveal(){if(Revealed)return;Revealed=true;foreach(var label in canvas.Children.OfType<Border>())label.Visibility=Visibility.Visible;WheelPresentation.Animate(this,HiddenOpacity);if(Opacity<1&&!HasAnimatedProperties)Opacity=1;}
-    private string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540,Background=Brushes.Transparent,AllowDrop=true};private string selection="";private IReadOnlyList<ToolChoice> choices=[];
+    private string mode;private readonly Action<IDataObject,string> chosen;private readonly Func<string?> hint;private readonly Canvas canvas=new(){Width=540,Height=540,Background=Brushes.Transparent,AllowDrop=true};private string selection="";private IReadOnlyList<ToolChoice> choices=[];private string[] draggedFiles=[],resolvedFiles=[];
     public GlobalDropWheel(string mode,double scale,Action<IDataObject,string> chosen,Func<string?> hint)
     {
         this.mode=mode;this.chosen=chosen;this.hint=hint;Title="Nashi · "+mode;Width=Height=WheelPresentation.Diameter*scale;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;ShowActivated=false;Topmost=true;AllowDrop=true;Content=new Viewbox{Child=canvas};Build([]);Opacity=HiddenOpacity;
@@ -155,14 +155,16 @@ internal sealed class GlobalDropWheel:Window
     internal void SwitchMode(string next){if(mode==next)return;mode=next;Title="Nashi · "+next;}
     private void Track(DragEventArgs e)
     {
-        var files=e.Data.GetData(DataFormats.FileDrop) as string[]??[];var web=Payload(e.Data);var updated=Choices(files,web);
+        // DragOver fires on every pointer move, so shortcuts are only resolved when the dragged files change.
+        var dragged=e.Data.GetData(DataFormats.FileDrop) as string[]??[];if(!dragged.SequenceEqual(draggedFiles)){draggedFiles=dragged;resolvedFiles=ShellShortcut.Resolve(dragged);}
+        var files=resolvedFiles;var dataLink=DragPayload.Parse(e.Data);var web=Payload(e.Data);var updated=Choices(files,dataLink,web);
         // Replacing the hit-test target during DragEnter causes OLE to enter
         // again instead of advancing to DragOver. Keep the visual tree stable
         // until the payload actually changes, and select on entry as well.
         // A file this mode has no tool for (an .ico, for example) still shows the wheel, with a message, so it does not look broken.
         var unsupported=files.Length>0&&files.All(p=>!Directory.Exists(p)||FeatureCatalog.Extension(p) is "pages" or "rtfd")&&updated.Count==0;
         // A link only offers downloads in Tools mode; Convert and File actions say so instead of repeating the downloads.
-        var linkOnly=web is not null&&updated.Count==0;unsupported|=linkOnly;
+        var linkOnly=(files.Length==0||dataLink is not null)&&web is not null&&updated.Count==0;unsupported|=linkOnly;
         if(!updated.SequenceEqual(choices)||unsupported!=noTools||linkOnly!=noLink){choices=updated;noTools=unsupported;noLink=linkOnly;Build(choices);}
         var p=e.GetPosition(canvas);var distance=(p-new Point(270,270)).Length;
         if(distance<108||distance>250||choices.Count==0){selection="";Highlight(-1);}
@@ -170,9 +172,11 @@ internal sealed class GlobalDropWheel:Window
         e.Effects=selection.Length>0?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;
     }
     private WebMediaPayload? Payload(IDataObject data)=>DragPayload.Parse(data,hint());
-    private IReadOnlyList<ToolChoice> Choices(string[] files,WebMediaPayload? web)
+    private IReadOnlyList<ToolChoice> Choices(string[] files,WebMediaPayload? dataLink,WebMediaPayload? web)
     {
-        if(files.Length>0&&web is null)
+        // A link carried by the drag data itself (a browser drag) still wins, as before. A link only guessed from
+        // the element under the start point (for example the NVIDIA App overlay) never hides dragged files.
+        if(files.Length>0&&dataLink is null)
         {
             if(mode=="convert")return FeatureCatalog.Formats(files).Select(f=>new ToolChoice("convert:"+f,f.ToUpperInvariant(),"↗")).ToArray();
             if(mode=="actions")return [new("share","Share","◉"),new("float","Float","▣"),new("copy","Copy","▱"),new("move","Move","↗"),new("copyPath","Copy Path","↪"),new("terminal","Terminal",">_")];

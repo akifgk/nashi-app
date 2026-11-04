@@ -104,11 +104,7 @@ public sealed partial class MainWindow:Window
         page.ScrollToVerticalOffset(page.VerticalOffset-e.Delta);
         e.Handled=true;
     }
-    private IEnumerable<LibraryEntry> SearchLibrary(string query)
-    {
-        var original=library.Search(query).Select(e=>e.Id).ToHashSet();
-        return library.Entries.Where(e=>original.Contains(e.Id)||AppLocalization.Matches(e.Action,query,L10n.Language));
-    }
+    private IEnumerable<LibraryEntry> SearchLibrary(string query)=>library.Search(query,L10n.Language);
     private static TextBlock Text(string value,double size,string? color=null,bool localize=true)
     {
         var text=new TextBlock{Text=value,FontSize=size,TextWrapping=TextWrapping.Wrap,VerticalAlignment=VerticalAlignment.Center,FontWeight=size>=17?FontWeights.SemiBold:FontWeights.Normal};if(color is not null)text.SetResourceReference(TextBlock.ForegroundProperty,color);return localize?L10n.Label(text):text;
@@ -122,7 +118,7 @@ public sealed partial class MainWindow:Window
     // One argument for explorer.exe: a trailing backslash (a drive root) must be doubled or it escapes the closing quote.
     private static string Quoted(string path)=>"\""+path+(path.EndsWith('\\')?"\\":"")+"\"";
     private void Choose(){if(busy)return;var picker=new OpenFileDialog{Multiselect=true,Title=L10n.Text("Choose files for Nashi")};if(picker.ShowDialog(this)==true){Add(picker.FileNames);ShowLibrary(false);}}
-    private void Add(IEnumerable<string> paths){foreach(var path in paths.Where(p=>File.Exists(p)||Directory.Exists(p))){var full=Path.GetFullPath(path);if(!files.Contains(full))files.Add(full);}Refresh();}
+    private void Add(IEnumerable<string> paths){foreach(var path in ShellShortcut.Resolve(paths).Where(p=>File.Exists(p)||Directory.Exists(p))){var full=Path.GetFullPath(path);if(!files.Contains(full))files.Add(full);}Refresh();}
     internal void ShowLibrary(bool visible)
     {
         var changed=LibraryVisible!=visible;
@@ -322,11 +318,11 @@ public sealed partial class MainWindow:Window
         catch(OperationCanceledException){toast.Close();L10n.SetText(status,"Setup cancelled.");}catch(Exception error){toast.Close();MessageBox.Show(this,L10n.Text(error.Message),L10n.Text("Setup couldn’t finish"));}finally{SetBusy(false);}
     }
     internal void OfferUpdate(WindowsUpdate candidate){update=candidate;L10n.Bind(updateButton,ContentControl.ContentProperty,"Update to "+candidate.Version);if(updateBanner is not null)updateBanner.Visibility=Visibility.Visible;tray?.UpdateAvailable(candidate.Version);}
-    private async Task CheckUpdatesAsync(bool user)
+    internal async Task CheckUpdatesAsync(bool user)
     {
         if(busy||checking)return;checking=true;updateButton.IsEnabled=false;if(user)L10n.SetText(status,"Checking for updates…");try
         {
-            if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)L10n.SetText(status,"You have the latest published Windows version.");return;}OfferUpdate(update);if(!user)return;}
+            if(update is null){update=await PublicUpdates.CheckAsync(UpdateInstaller.Current);if(update is null){if(user)L10n.SetText(status,"You have the latest published Windows version.");return;}OfferUpdate(update);}if(!user)return;
             if(busy)return;
             if(MessageBox.Show(this,L10n.Text("Download, verify and install Nashi "+update.Version+"? The app will restart. No account or token is needed."),L10n.Text("Nashi update"),MessageBoxButton.OKCancel)!=MessageBoxResult.OK)return;
             SetBusy(true);using var cancellation=new CancellationTokenSource();var toast=new ToastWindow(this,cancellation.Cancel);toast.Show();
