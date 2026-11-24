@@ -14,7 +14,7 @@ struct SettingsView:View {
     @ObservedObject private var preferences=FormatPreferences.shared
     @AppStorage("enabled") private var enabled=true
     @AppStorage("reveal") private var reveal=true
-    @AppStorage("dragHint") private var dragHint=true
+    @AppStorage(StatusMenuItem.defaultsKey) private var hiddenStatusMenuItems=""
     @AppStorage("wheelScale") private var wheelScale=1.0
     @AppStorage("conversionFanTheme") private var fanTheme="glass"
     @AppStorage("soundsAndHapticsEnabled") private var feedback=true
@@ -38,7 +38,7 @@ struct SettingsView:View {
     private var terminalApplications:[(String,String)] {
         var apps=[("com.apple.Terminal","Terminal")]
         if NSWorkspace.shared.urlForApplication(withBundleIdentifier:"com.googlecode.iterm2") != nil { apps.append(("com.googlecode.iterm2","iTerm2")) }
-        if !apps.contains(where:{$0.0==terminalApplication}) { apps.append((terminalApplication,"\(terminalApplication) (Not installed)")) }
+        if !apps.contains(where:{$0.0==terminalApplication}) { apps.append((terminalApplication,AppLocalization.text("\(terminalApplication) (Not installed)",language:appLanguage))) }
         return apps
     }
     var body:some View {
@@ -138,6 +138,12 @@ struct SettingsView:View {
                 }.padding(10)
             }
             .onReceive(Timer.publish(every:2,on:.main,in:.common).autoconnect()) { _ in windowAccessibility=AXIsProcessTrusted() }
+            GroupBox("Menu bar") {
+                VStack(alignment:.leading,spacing:10) {
+                    Text("Choose what appears when you click the Nashi icon in the menu bar. Settings and Quit are always shown.").font(.caption).foregroundStyle(.secondary)
+                    ForEach(StatusMenuItem.allCases) { row in Toggle(LocalizedStringKey(row.label),isOn:statusMenuBinding(row)) }
+                }.frame(maxWidth:.infinity,alignment:.leading).padding(10)
+            }
             GroupBox("File actions") {
                 VStack(spacing:16) {
                     HStack { Text("Float Behaviour");Spacer();Picker("Float behavior",selection:$floatBehavior) { Text("Create a New Float").tag("createNew");Text("Add Files to an Existing Float").tag("addToExisting") }.labelsHidden().frame(maxWidth:240) }
@@ -147,7 +153,6 @@ struct SettingsView:View {
             DisclosureGroup("Additional options") { VStack(alignment:.leading,spacing:13) {
                 Toggle("Enable Nashi",isOn:$enabled)
                 Toggle("Reveal finished files in Finder",isOn:$reveal)
-                Toggle("Show key hint while dragging",isOn:$dragHint)
                 HStack { Text("Wheel size");Slider(value:$wheelScale,in:0.85...1.4).frame(width:230);Text(Int(wheelScale*100),format:.percent).monospacedDigit().frame(width:40) }
             }.padding(.top,12) }
         }.padding(26).frame(maxWidth:680) }.frame(maxWidth:.infinity)
@@ -166,6 +171,13 @@ struct SettingsView:View {
             Divider()
             FormatSettingsDetail(format:FormatPreferenceItem.all.first{$0.id==selectedFormat} ?? FormatPreferenceItem.all[0],preferences:preferences).frame(maxWidth:.infinity,maxHeight:.infinity)
         }
+    }
+    private func statusMenuBinding(_ row:StatusMenuItem)->Binding<Bool> {
+        Binding(get:{ !hiddenStatusMenuItems.split(separator:"\n").contains(Substring(row.rawValue)) },set:{ visible in
+            var hidden=Set(hiddenStatusMenuItems.split(separator:"\n").map(String.init))
+            if visible { hidden.remove(row.rawValue) } else { hidden.insert(row.rawValue) }
+            hiddenStatusMenuItems=hidden.sorted().joined(separator:"\n")
+        })
     }
     private func shortcut(_ wheel:WheelShortcut)->Binding<UInt> {
         Binding(get:{ModifierPreferences.chord(for:wheel).rawValue},set:{if ModifierPreferences.set(.init(rawValue:$0),for:wheel) { shortcutsRevision += 1 }})
